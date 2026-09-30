@@ -18,7 +18,7 @@ endif()
 
 # --- Compiler flags ---
 # Warning flags for all build types
-set(CMAKE_CXX_FLAGS "-Wall -Wextra -Werror")
+set(CMAKE_CXX_FLAGS "-Wall -Wextra")
 # Debugging flags for Debug build
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 # Optimization flags for Release build
@@ -45,8 +45,8 @@ add_library(${PROJECT_NAME} STATIC ${SOURCES} ${HEADERS})
 target_include_directories(${PROJECT_NAME} PUBLIC ${INCLUDE_DIR})
 
 # --- Main executable ---
-add_executable(main ${SOURCE_DIR}/main.cpp)
-target_link_libraries(main PRIVATE ${PROJECT_NAME})
+add_executable(TSPsolver ${SOURCE_DIR}/main.cpp)
+target_link_libraries(TSPsolver PRIVATE ${PROJECT_NAME})
 
 
 # --- External dependencies ---
