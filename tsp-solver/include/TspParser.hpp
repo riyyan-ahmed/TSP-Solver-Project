@@ -1,9 +1,7 @@
 #pragma once
-
+#include <istream>
 #include <string>
-#include <vector>
 #include "TspInstance.hpp"
-
 
 
 namespace tsp {
@@ -25,6 +23,9 @@ namespace tsp {
             TspParser() = default;
 
             TspInstance parse(const std::string& filePath);
+
+            // parses from any stream, so tests can parse in-memory text.
+            TspInstance parse(std::istream& input);
 
     };
 }

@@ -1,19 +1,21 @@
 #include "TspParser.hpp"
-
 #include <sstream>
 #include <fstream>
 #include <stdexcept>
 
 
-std::string trim(const std::string &text) {
-    const auto first = text.find_first_not_of(" \t\r\n");
+// Generated with Claude Code (Claude Opus 5.5), 2026-09-25
+namespace {
+    std::string trim(const std::string &text) {
+        const auto first = text.find_first_not_of(" \t\r\n");
 
-    if (first == std::string::npos) {
-        return "";
+        if (first == std::string::npos) {
+            return "";
+        }
+
+        const auto last = text.find_last_not_of(" \t\r\n");
+        return text.substr(first, last - first + 1);
     }
-
-    const auto last = text.find_last_not_of(" \t\r\n");
-    return text.substr(first, last - first + 1);
 }
 
 
@@ -25,6 +27,13 @@ namespace tsp
         if (!input.is_open()) {
             throw std::runtime_error("Cannot open file: " + filePath);
         }
+
+        return parse(input);
+    }
+
+
+    TspInstance TspParser::parse(std::istream &input) {
+        *this = TspParser();
 
         readHeader(input);
 

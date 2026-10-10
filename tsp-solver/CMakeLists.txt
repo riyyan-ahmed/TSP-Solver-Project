@@ -17,8 +17,9 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 # --- Compiler flags ---
-# Warning flags for all build types
-set(CMAKE_CXX_FLAGS "-Wall -Wextra -Werror")
+# Warning flags for all build types, applied only to our own targets so that
+# third-party code (GoogleTest) is not built with -Werror
+set(WARNING_FLAGS -Wall -Wextra -Werror)
 # Debugging flags for Debug build
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 # Optimization flags for Release build
@@ -43,10 +44,12 @@ list(REMOVE_ITEM SOURCES "${SOURCE_DIR}/main.cpp")
 # --- Including libraries ---
 add_library(${PROJECT_NAME} STATIC ${SOURCES} ${HEADERS})
 target_include_directories(${PROJECT_NAME} PUBLIC ${INCLUDE_DIR})
+target_compile_options(${PROJECT_NAME} PRIVATE ${WARNING_FLAGS})
 
 # --- Main executable ---
 add_executable(main ${SOURCE_DIR}/main.cpp)
 target_link_libraries(main PRIVATE ${PROJECT_NAME})
+target_compile_options(main PRIVATE ${WARNING_FLAGS})
 
 
 # --- External dependencies ---
@@ -69,6 +72,10 @@ if(BUILD_TESTS)
   add_executable(tests ${TEST_SOURCES})
   target_link_libraries(tests PRIVATE ${PROJECT_NAME} GTest::gtest_main)
   target_include_directories(tests PRIVATE ${INCLUDE_DIR})
+  target_compile_options(tests PRIVATE ${WARNING_FLAGS})
+  # Lets the tests open the provided instance files from any working directory
+  target_compile_definitions(tests PRIVATE
+    TSP_INSTANCES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../TSP-instances")
   add_test(NAME tests COMMAND tests)
 endif()
 
