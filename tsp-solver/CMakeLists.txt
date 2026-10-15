@@ -47,9 +47,9 @@ target_include_directories(${PROJECT_NAME} PUBLIC ${INCLUDE_DIR})
 target_compile_options(${PROJECT_NAME} PRIVATE ${WARNING_FLAGS})
 
 # --- Main executable ---
-add_executable(main ${SOURCE_DIR}/main.cpp)
-target_link_libraries(main PRIVATE ${PROJECT_NAME})
-target_compile_options(main PRIVATE ${WARNING_FLAGS})
+add_executable(TSPsolver ${SOURCE_DIR}/main.cpp)
+target_link_libraries(TSPsolver PRIVATE ${PROJECT_NAME})
+target_compile_options(TSPsolver PRIVATE ${WARNING_FLAGS})
 
 
 # --- External dependencies ---
@@ -75,7 +75,10 @@ if(BUILD_TESTS)
   target_compile_options(tests PRIVATE ${WARNING_FLAGS})
   # Lets the tests open the provided instance files from any working directory
   target_compile_definitions(tests PRIVATE
-    TSP_INSTANCES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../TSP-instances")
+    TSP_INSTANCES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../TSP-instances"
+    TSP_SOLVER_EXE="$<TARGET_FILE:TSPsolver>")
+  # The command line tests run the real executable
+  add_dependencies(tests TSPsolver)
   add_test(NAME tests COMMAND tests)
 endif()
 

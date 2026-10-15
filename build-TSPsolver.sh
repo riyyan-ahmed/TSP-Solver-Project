@@ -1,16 +1,9 @@
 #!/bin/bash
 set -e
 
-# Go to the project folder from any dir
-cd "$(dirname "$0")/tsp-solver"
+# Work from the project root, whatever the current directory is
+cd "$(dirname "$0")"
 
-mkdir -p build
-
-
-cd build
-
-
-cmake ..
-
-# Compile 
-cmake --build .
+# Configure (tests included) and compile into ./build
+cmake -S tsp-solver -B build -DBUILD_TESTS=ON
+cmake --build build

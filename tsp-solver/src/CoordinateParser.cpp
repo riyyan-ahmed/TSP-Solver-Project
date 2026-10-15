@@ -39,6 +39,10 @@ TspInstance TspParser::parseCoordinates(std::istream& input) {
         if (extra != "EOF") {
             throw std::runtime_error("Unexpected data after coordinate section.");
         }
+
+        if (input >> extra) {
+            throw std::runtime_error("Unexpected data after EOF.");
+        }
     }
 
     if (input.bad()) {

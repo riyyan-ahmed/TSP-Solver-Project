@@ -38,6 +38,9 @@ namespace {
 namespace tsp {
 
 void TourWriter::write(const TspInstance& instance, const Tour& tour, const std::string& filePath) const {
+    // validated first so that an invalid tour never truncates an existing file
+    checkIsPermutation(tour, instance.size());
+
     std::ofstream output(filePath);
 
     if (!output.is_open()) {
