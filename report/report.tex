@@ -12,6 +12,25 @@
 \usepackage{setspace}
 \usepackage[hidelinks]{hyperref}
 
+% ---- UML DIAGRAM SUPPORT (remove everything down to the END line together with the diagram block) ----
+% Only standard TikZ is used, so no extra package has to be uploaded to Overleaf.
+\usepackage{tikz}
+\usetikzlibrary{positioning, shapes.multipart, arrows.meta}
+\tikzset{
+  umlbox/.style     = {rectangle split, draw, fill=white, font=\footnotesize,
+                       inner xsep=5pt, inner ysep=3pt, text width=6cm},
+  umlinherit/.style = {-{Triangle[open, length=8pt, width=8pt]}},
+  umlcompo/.style   = {{Diamond[length=10pt, width=6pt]}-},
+  umldep/.style     = {dashed, -{Straight Barb[length=7pt, width=8pt]}}
+}
+% A class with name, attributes and operations compartments, then one with name and operations only
+% arguments are the node name, the placement options, the title, the attributes and the operations
+\newcommand{\umlthree}[5]{\node[umlbox, rectangle split parts=3, #2] (#1)
+  {\centering\textbf{#3}\nodepart{two}\raggedright #4\nodepart{three}\raggedright #5};}
+\newcommand{\umltwo}[4]{\node[umlbox, rectangle split parts=2, #2] (#1)
+  {\centering\textbf{#3}\nodepart{two}\raggedright #4};}
+% ---- END UML DIAGRAM SUPPORT ----
+
 \setstretch{1.08}
 \setlength{\parindent}{1.2em}
 \setlength{\parskip}{0.3em}
@@ -129,15 +148,104 @@ The tour writer converts a tour to the output format. Before writing, it checks 
 
 The entry point reads the two positional arguments and the optional method flag, parses the instance, runs the selected solver and writes the tour. A missing argument, a method flag without a value and an unknown method each print a message and return a non zero status. Every error raised by the library, whether in parsing, solving or writing, is an exception derived from the standard exception class. The entry point catches it in one place, prints its message on the error stream and returns the same status. The library classes never print anything themselves, which keeps them reusable and lets the tests check errors without parsing text.
 
-Figure~\ref{fig-flow} shows how these components are connected when the program runs.
+Figure~\ref{fig-flow} gives the class diagram of the library. The entry point is a function and not a class, so it does not appear in it. It creates a parser, a solver and a writer in turn and passes the instance from one to the next. The parser builds a matrix graph or a coordinate graph depending on the data section of the file, and hands the result to the instance. The dashed arrows are dependencies, the diamond marks the ownership of the graph by the instance, and the hollow triangles mark inheritance. The type \texttt{Tour} is an alias of a vector of vertex indices and is therefore not drawn as a class.
 
+% =====================================================================
+% UML CLASS DIAGRAM (BEGIN). To remove it, delete everything down to the
+% line "UML CLASS DIAGRAM (END)", then delete the preamble block marked
+% "UML DIAGRAM SUPPORT", and uncomment the placeholder figure that follows
+% the END line if a hand made figure is wanted instead.
+% Everything is scaled to the text width, so adding a class never makes
+% the figure overflow the page.
+% =====================================================================
 \begin{figure}[H]
-% To use the real figure, replace the placeholder line below with
-% \begin{center}\includegraphics[width=0.94\linewidth,height=7.5cm,keepaspectratio]{figures/architecture.pdf}\end{center}
-  \figureplaceholder{7.5cm}{Architecture figure to be inserted here. Suggested content, class diagram with Graph, MatrixGraph, CoordinatesGraph, TspInstance, TspParser, Solver, TrivialSolver, TourWriter, and the data flow from the command line to the output file.}
-  \caption{Main classes of the library and the data flow of a run, from the command line arguments to the tour file.}
+  \centering
+  \resizebox{\linewidth}{!}{%
+  \begin{tikzpicture}
+
+    % ---- middle column, from top to bottom ----------------------------
+    % Abstract classes get an italic name and the stereotype line, abstract operations are in italics.
+    \umltwo{Solver}{text width=6.4cm}
+      {\textit{Solver}\\[-1pt]{\scriptsize\guillemotleft abstract\guillemotright}}
+      {\textit{+ solve(instance) : Tour}}
+
+    \umlthree{TspInstance}{below=1.4cm of Solver, text width=6.4cm}{TspInstance}
+      {- name : string \\
+       - cityIds : vector<int> \\
+       - graph : unique\_ptr<Graph>}
+      {+ getName() : const string\& \\
+       + size() : size\_t \\
+       + getCityId(index) : int \\
+       + getGraph() : const Graph\&}
+
+    \umltwo{Graph}{below=1.4cm of TspInstance, text width=6.4cm}
+      {\textit{Graph}\\[-1pt]{\scriptsize\guillemotleft abstract\guillemotright}}
+      {\textit{+ size() : size\_t} \\
+       \textit{+ weight(i, j) : double} \\
+       + tourLength(tour) : double}
+
+    \umlthree{CoordinatesGraph}{below=1.4cm of Graph, text width=6.4cm}{CoordinatesGraph}
+      {- coordinates : vector<pair<double,double{>}{>}}
+      {+ size() : size\_t \\
+       + weight(i, j) : double}
+
+    % ---- left column ---------------------------------------------------
+    \umlthree{TspParser}{left=1.8cm of TspInstance, text width=6.2cm}{TspParser}
+      {- name : string \\
+       - type : string \\
+       - edgeWeightType : string \\
+       - edgeWeightFormat : string \\
+       - dataSection : string \\
+       - dimension : int}
+      {+ parse(filePath) : TspInstance \\
+       + parse(input) : TspInstance \\
+       - readHeader(input) : void \\
+       - parseLowerDiag(input) : TspInstance \\
+       - parseCoordinates(input) : TspInstance}
+
+    \umlthree{MatrixGraph}{left=1.8cm of CoordinatesGraph, text width=6.2cm}{MatrixGraph}
+      {- distances : DistanceMatrix}
+      {+ size() : size\_t \\
+       + weight(i, j) : double}
+
+    % ---- right column --------------------------------------------------
+    \umltwo{TourWriter}{right=1.8cm of TspInstance, text width=5.2cm}{TourWriter}
+      {+ write(instance, tour, filePath) \\
+       + write(instance, tour, output)}
+
+    \umltwo{TrivialSolver}{right=1.8cm of Solver, text width=5.2cm}{TrivialSolver}
+      {+ solve(instance) : Tour}
+
+    % ---- relationships -------------------------------------------------
+    % Inheritance, the hollow triangle is at the parent class
+    \draw[umlinherit] (TrivialSolver.west)    -- (Solver.east);
+    \draw[umlinherit] (CoordinatesGraph.north) -- (Graph.south);
+    \draw[umlinherit] (MatrixGraph.north)      |- (Graph.west);
+
+    % Composition, the filled diamond is at the owner, TspInstance owns exactly one Graph
+    \draw[umlcompo] (TspInstance.south) -- (Graph.north)
+      node[pos=0.75, right=2pt, font=\scriptsize] {graph}
+      node[pos=0.88, left=2pt,  font=\scriptsize] {1};
+
+    % Dependencies, dashed arrow from the class that uses to the class that is used
+    \draw[umldep] (TspParser.east) -- (TspInstance.west);
+    \draw[umldep] (Solver.south)   -- (TspInstance.north);
+    \draw[umldep] (TourWriter.west) -- (TspInstance.east);
+
+  \end{tikzpicture}}
+  \caption{Class diagram of the library. Dashed arrows are dependencies, the diamond is composition and hollow triangles are inheritance.}
   \label{fig-flow}
 \end{figure}
+% =====================================================================
+% UML CLASS DIAGRAM (END)
+% =====================================================================
+
+% Placeholder kept for the case where the diagram above is removed.
+% \begin{figure}[H]
+%   \figureplaceholder{7.5cm}{Architecture figure to be inserted here.}
+%   \caption{Class diagram of the library.}
+%   \label{fig-flow}
+% \end{figure}
 
 \section{Testing}
 
