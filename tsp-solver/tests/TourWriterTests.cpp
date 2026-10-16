@@ -1,4 +1,3 @@
-// Generated with Claude Code (Claude Sonnet 5.5), 2026-10-14
 #include <gtest/gtest.h>
 #include <cstdio>
 #include <filesystem>
@@ -13,7 +12,7 @@ using namespace tsp;
 namespace {
     TspInstance makeInstance(const std::string& name, std::vector<int> ids) {
         std::vector<std::pair<double, double>> coordinates;
-        for (std::size_t i = 0; i < ids.size(); ++i) {
+        for (std::size_t i = 0; i < ids.size(); i++) {
             coordinates.emplace_back(static_cast<double>(i), 0.0);
         }
         return TspInstance(name, std::move(ids), std::make_unique<CoordinatesGraph>(std::move(coordinates)));
@@ -24,9 +23,7 @@ TEST(TourWriter, WritesSpecificationFormat) {
     TspInstance instance = makeInstance("example.tsp", {1, 2, 3, 4, 5});
     std::ostringstream out;
     TourWriter().write(instance, {0, 2, 4, 1, 3}, out);
-    EXPECT_EQ(out.str(),
-              "NAME : example.tour\nTYPE : TOUR\nDIMENSION : 5\nTOUR_SECTION\n"
-              "1\n3\n5\n2\n4\n-1\nEOF\n");
+    EXPECT_EQ(out.str(), "NAME : example.tour\nTYPE : TOUR\nDIMENSION : 5\nTOUR_SECTION\n" "1\n3\n5\n2\n4\n-1\nEOF\n");
 }
 
 TEST(TourWriter, OnlyReplacesTspExtensionAtTheEnd) {
@@ -48,10 +45,10 @@ TEST(TourWriter, RejectsInvalidTours) {
     TspInstance instance = makeInstance("n", {1, 2, 3});
     std::ostringstream out;
     TourWriter writer;
-    EXPECT_THROW(writer.write(instance, {0, 1}, out), std::invalid_argument);        // too short
-    EXPECT_THROW(writer.write(instance, {0, 1, 2, 0}, out), std::invalid_argument);  // too long
-    EXPECT_THROW(writer.write(instance, {0, 1, 1}, out), std::invalid_argument);     // repeated city
-    EXPECT_THROW(writer.write(instance, {0, 1, 3}, out), std::invalid_argument);     // out of range
+    EXPECT_THROW(writer.write(instance, {0, 1}, out), std::invalid_argument);      
+    EXPECT_THROW(writer.write(instance, {0, 1, 2, 0}, out), std::invalid_argument);  
+    EXPECT_THROW(writer.write(instance, {0, 1, 1}, out), std::invalid_argument);    
+    EXPECT_THROW(writer.write(instance, {0, 1, 3}, out), std::invalid_argument);    
     EXPECT_TRUE(out.str().empty());
 }
 
@@ -67,16 +64,14 @@ TEST(TourWriter, WritesFile) {
 }
 
 TEST(TourWriter, FailsOnUnwritablePath) {
-    EXPECT_THROW(TourWriter().write(makeInstance("n", {1}), {0}, "/no/such/dir/out.tour"),
-                 std::runtime_error);
+    EXPECT_THROW(TourWriter().write(makeInstance("n", {1}), {0}, "/no/such/dir/out.tour"), std::runtime_error);
 }
 
 TEST(TourWriter, InvalidTourDoesNotTouchExistingFile) {
     const auto path = std::filesystem::temp_directory_path() / "tsp_writer_keep.tour";
     { std::ofstream(path) << "previous content"; }
 
-    EXPECT_THROW(TourWriter().write(makeInstance("n", {1, 2}), {0, 0}, path.string()),
-                 std::invalid_argument);
+    EXPECT_THROW(TourWriter().write(makeInstance("n", {1, 2}), {0, 0}, path.string()), std::invalid_argument);
 
     std::ifstream in(path);
     std::stringstream content;

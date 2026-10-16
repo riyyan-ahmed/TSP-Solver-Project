@@ -6,6 +6,7 @@
 
 // Generated with Claude Code (Claude Opus 5.5), 2026-09-25
 namespace {
+    /** Removes spaces, tabs and line breaks at both ends of the text. */
     std::string trim(const std::string &text) {
         const auto first = text.find_first_not_of(" \t\r\n");
 
@@ -33,6 +34,7 @@ namespace tsp
 
 
     TspInstance TspParser::parse(std::istream &input) {
+        // forget the header of a previously parsed file
         *this = TspParser();
 
         readHeader(input);
@@ -43,13 +45,13 @@ namespace tsp
 
         if (dataSection == "EDGE_WEIGHT_SECTION") {
             if (edgeWeightType != "EXPLICIT" || edgeWeightFormat != "LOWER_DIAG_ROW") {
-                throw std::runtime_error("Expected EXPLICIT weights in LOWER_DIAG_ROW format.");
+                throw std::runtime_error("Expected EXPLICIT weights in LOWER_DIAG_ROW format");
             }
 
             return parseLowerDiag(input);
         }
 
-        throw std::runtime_error("Unsupported data section.");
+        throw std::runtime_error("Unsupported data section");
     }
 
 
@@ -87,9 +89,9 @@ namespace tsp
                 std::istringstream number(value);
                 std::string extra;
 
+                // extra catches values like "52abc"
                 if (!(number >> dimension) || dimension <= 0 || (number >> extra)) {
-                    throw std::runtime_error(
-                        "DIMENSION must be a positive integer.");
+                    throw std::runtime_error("DIMENSION must be a positive integer");
                 }
             } else if (key == "EDGE_WEIGHT_TYPE") {
                 edgeWeightType = value;
@@ -99,19 +101,19 @@ namespace tsp
         }
 
         if (name.empty()) {
-            throw std::runtime_error("Missing NAME.");
+            throw std::runtime_error("Missing NAME");
         }
 
         if (type != "TSP") {
-            throw std::runtime_error("Expected TYPE: TSP.");
+            throw std::runtime_error("Expected TYPE: TSP");
         }
 
         if (dimension <= 0) {
-            throw std::runtime_error("Missing valid DIMENSION.");
+            throw std::runtime_error("Missing valid DIMENSION");
         }
 
         if (dataSection.empty()) {
-            throw std::runtime_error("Missing supported data section.");
+            throw std::runtime_error("Missing supported data section");
         }
     }
 }

@@ -1,6 +1,5 @@
-// Generated with Claude Code (Claude Sonnet 5.5), 2026-10-14
+// Generated with Claude Code (Claude Sonnet 5.5), 2026-10-13 -> We used AI to format the text strings and some tests below
 #include <gtest/gtest.h>
-#include <cmath>
 #include <cmath>
 #include <sstream>
 #include <stdexcept>
@@ -157,10 +156,33 @@ TEST(Parser, RejectsNonNumericCoordinate) {
 TEST(Parser, RejectsOutOfRangeAndDuplicateCityIds) {
     EXPECT_THROW(parseText("NAME: n\nTYPE: TSP\nDIMENSION: 2\nNODE_COORD_SECTION\n1 0 0\n3 1 1\n"),
                  std::runtime_error);
-    EXPECT_THROW(parseText("NAME: n\nTYPE: TSP\nDIMENSION: 2\nNODE_COORD_SECTION\n0 0 0\n1 1 1\n"),
+    EXPECT_THROW(parseText("NAME: n\nTYPE: TSP\nDIMENSION: 2\nNODE_COORD_SECTION\n0 0 0\n2 1 1\n"),
                  std::runtime_error);
     EXPECT_THROW(parseText("NAME: n\nTYPE: TSP\nDIMENSION: 2\nNODE_COORD_SECTION\n1 0 0\n1 1 1\n"),
                  std::runtime_error);
+    EXPECT_THROW(parseText("NAME: n\nTYPE: TSP\nDIMENSION: 2\nNODE_COORD_SECTION\n0 0 0\n0 1 1\n"),
+                 std::runtime_error);
+}
+
+TEST(Parser, AcceptsIdsStartingAtZeroLikeTheInstanceGenerator) {
+    // same layout as the files written by instance_generator.py
+    std::string text = "NAME : rnd-0.tsp\nTYPE : TSP\nDIMENSION : 3\nEDGE_WEIGHT_TYPE: EUC_2D\n"
+                       "NODE_COORD_SECTION\n0 0.0 0.0\n1 3.0 4.0\n2 6.0 8.0\nEOF";
+    TspInstance instance = parseText(text);
+    EXPECT_EQ(instance.size(), 3u);
+    EXPECT_EQ(instance.getCityId(0), 0);
+    EXPECT_EQ(instance.getCityId(2), 2);
+    EXPECT_DOUBLE_EQ(instance.getGraph().weight(0, 1), 5.0);
+    EXPECT_DOUBLE_EQ(instance.getGraph().weight(0, 2), 10.0);
+}
+
+TEST(Parser, StoresZeroBasedIdsByIdWhenLinesAreShuffled) {
+    std::string text = "NAME: n\nTYPE: TSP\nDIMENSION: 3\nNODE_COORD_SECTION\n"
+                       "2 6 8\n0 0 0\n1 3 4\nEOF\n";
+    TspInstance instance = parseText(text);
+    EXPECT_EQ(instance.getCityId(0), 0);
+    EXPECT_DOUBLE_EQ(instance.getGraph().weight(0, 1), 5.0);
+    EXPECT_DOUBLE_EQ(instance.getGraph().weight(0, 2), 10.0);
 }
 
 TEST(Parser, RejectsExtraCoordinateLines) {

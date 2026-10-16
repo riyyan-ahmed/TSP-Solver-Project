@@ -2,7 +2,12 @@
 #include "TspParser.hpp"
 #include "MatrixGraph.hpp"
 #include <istream>
+#include <memory>
 #include <stdexcept>
+#include <string>
+#include <utility>
+#include <vector>
+
 
 
 namespace tsp {
@@ -17,19 +22,19 @@ TspInstance TspParser::parseLowerDiag(std::istream& input) {
     }
 
     for (int i = 0; i < dimension; i++) {
-        for (int j = 0; j <= i; ++j) {
+        for (int j = 0; j <= i; j++) {
             int weight;
 
             if (!(input >> weight)) {
-                throw std::runtime_error("Missing or invalid integer distance.");
+                throw std::runtime_error("Missing or invalid integer distance");
             }
 
             if (weight < 0) {
-                throw std::runtime_error("Distances cannot be negative.");
+                throw std::runtime_error("Distances cannot be negative");
             }
 
             if (i == j && weight != 0) {
-                throw std::runtime_error("The distance from a city to itself must be zero.");
+                throw std::runtime_error("The distance from a city to itself must be zero");
             }
 
             distances[i][j] = weight;
@@ -37,7 +42,7 @@ TspInstance TspParser::parseLowerDiag(std::istream& input) {
         }
     }
 
-    // some files like (dantzig42) have a DISPLAY_DATA_SECTION after the matrix, which contaisn coordinates, so it is skipped
+    // dantzig42 has a DISPLAY_DATA_SECTION (drawing coordinates) after the matrix: skip it
     std::string keyword;
 
     if (input >> keyword && keyword == "DISPLAY_DATA_SECTION") {
@@ -45,17 +50,17 @@ TspInstance TspParser::parseLowerDiag(std::istream& input) {
     }
 
     if (input && keyword != "EOF") {
-        throw std::runtime_error("Expected EOF after the matrix distances.");
+        throw std::runtime_error("Expected EOF after the matrix distances");
     }
 
     std::string extra;
 
     if (input >> extra) {
-        throw std::runtime_error("Unexpected data after EOF.");
+        throw std::runtime_error("Unexpected data after EOF");
     }
 
     if (input.bad()) {
-        throw std::runtime_error("An error occurred while reading the file.");
+        throw std::runtime_error("An error occurred while reading the file");
     }
 
     return TspInstance(name, std::move(cityIds), std::make_unique<MatrixGraph>(std::move(distances)));

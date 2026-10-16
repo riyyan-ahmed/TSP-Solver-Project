@@ -1,63 +1,43 @@
-cmake_minimum_required(VERSION 3.14)
-project(my_project)
+cmake_minimum_required(VERSION 3.16)
+project(tsp_solver)
 
 # --- Global options ---
-# Use C++20 standard, change if needed
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# --- Debug/Release configuration ---
-# By default, build in Release mode
-# To set the build type to Debug, use:
-#      cmake -DCMAKE_BUILD_TYPE=Debug ..
-# ------------------------------------
+# --- Release by default (use -DCMAKE_BUILD_TYPE=Debug to debug) ---
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
 # --- Compiler flags ---
-# Warning flags for all build types, applied only to our own targets so that
-# third-party code (GoogleTest) is not built with -Werror
-set(WARNING_FLAGS -Wall -Wextra -Werror)
-# Debugging flags for Debug build
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
-# Optimization flags for Release build
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+# Only applied to our targets: GoogleTest does not compile with -Werror
+set(WARNING_FLAGS -Wall -Wextra -Werror)
 
 # --- Directories ---
 set(SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
 set(INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
 set(TEST_DIR ${CMAKE_CURRENT_SOURCE_DIR}/tests)
 
-# --- Source variables ---
+# --- Sources (main.cpp only belongs to the executable) ---
 file(GLOB SOURCES "${SOURCE_DIR}/*.cpp")
 file(GLOB HEADERS "${INCLUDE_DIR}/*.hpp")
-
-# Remove main.cpp from SOURCES
-# We must do so because main.cpp is not part of the library
-# and should not be compiled into it.
-# Instead, it will be compiled into the main executable.
-# Add here any other source files that should be excluded from the library.
 list(REMOVE_ITEM SOURCES "${SOURCE_DIR}/main.cpp")
 
-# --- Including libraries ---
+# --- Library ---
 add_library(${PROJECT_NAME} STATIC ${SOURCES} ${HEADERS})
 target_include_directories(${PROJECT_NAME} PUBLIC ${INCLUDE_DIR})
 target_compile_options(${PROJECT_NAME} PRIVATE ${WARNING_FLAGS})
 
-# --- Main executable ---
+# --- Executable: build/TSPsolver ---
 add_executable(TSPsolver ${SOURCE_DIR}/main.cpp)
 target_link_libraries(TSPsolver PRIVATE ${PROJECT_NAME})
 target_compile_options(TSPsolver PRIVATE ${WARNING_FLAGS})
 
-
-# --- External dependencies ---
-# Example with Boost program options (uncomment if needed)
-# find_package(Boost REQUIRED COMPONENTS program_options)
-# target_link_libraries(${PROJECT_NAME} PRIVATE Boost::boost)
-
-# --- Tests (optionnal) ---
+# --- Tests: build/tests (enabled with -DBUILD_TESTS=ON) ---
 if(BUILD_TESTS)
   include(FetchContent)
   FetchContent_Declare(
@@ -73,13 +53,10 @@ if(BUILD_TESTS)
   target_link_libraries(tests PRIVATE ${PROJECT_NAME} GTest::gtest_main)
   target_include_directories(tests PRIVATE ${INCLUDE_DIR})
   target_compile_options(tests PRIVATE ${WARNING_FLAGS})
-  # Lets the tests open the provided instance files from any working directory
+  # Paths the tests need to find the instance files and the executable
   target_compile_definitions(tests PRIVATE
     TSP_INSTANCES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../TSP-instances"
     TSP_SOLVER_EXE="$<TARGET_FILE:TSPsolver>")
-  # The command line tests run the real executable
   add_dependencies(tests TSPsolver)
   add_test(NAME tests COMMAND tests)
 endif()
-
-

@@ -1,63 +1,76 @@
-#include <iostream>
-#include <string>
-#include <memory>
 #include <exception>
-
-#include "TspParser.hpp"
+#include <iostream>
+#include <memory>
+#include <string>
+#include <vector>
 #include "Algorithms.hpp"
 #include "TourWriter.hpp"
+#include "TspParser.hpp"
 
+
+
+namespace {
+    /** Prints how to call the program. */
+    void printUsage(const char* program) {
+        std::cerr << "Usage: " << program << " <instance_path> <output_path> [-m <algorithm>]\n" << "Algorithms: trivial (default)\n";
+    }
+
+    /** Returns the solver for an algorithm name, or nullptr if it does not exist. */
+    std::unique_ptr<tsp::Solver> makeSolver(const std::string& algorithm) {
+        if (algorithm == "trivial") {
+            return std::make_unique<tsp::TrivialSolver>();
+        }
+        return nullptr;
+    }
+}
+
+/** Reads the instance, solves it with the chosen method and writes the tour file. */
 int main(int argc, char* argv[]) {
-    // Check mandatory arguments
-    if (argc < 3) {
-        std::cerr << "Usage: " << argv[0] 
-                  << " <instance_path> <output_path> [-m <algorithm>]\n";
+    std::vector<std::string> paths;
+    std::string algorithm = "trivial";
+
+    for (int i = 1; i < argc; ++i) {
+        const std::string arg = argv[i];
+
+        if (arg == "-m") {
+            if (i + 1 >= argc) {
+                std::cerr << "Error: -m must be followed by an algorithm name\n";
+                printUsage(argv[0]);
+                return 1;
+            }
+            algorithm = argv[++i];
+        } else if (arg.size() > 1 && arg[0] == '-') {
+            std::cerr << "Error: unknown option '" << arg << "'.\n";
+            printUsage(argv[0]);
+            return 1;
+        } else {
+            paths.push_back(arg);
+        }
+    }
+
+    if (paths.size() != 2) {
+        std::cerr << "Error: expected an instance path and an output path\n";
+        printUsage(argv[0]);
         return 1;
     }
 
-    std::string instancePath = argv[1];
-    std::string outputPath = argv[2];
-    std::string algorithm = "trivial"; // Default method
-
-    // Check for algorithm selection flag 
-    for (int i = 3; i < argc; ++i) {
-        std::string arg = argv[i];
-        if (arg == "-m") {
-            if (i + 1 < argc) {
-                algorithm = argv[i + 1];
-                i++; // Skip the algorithm name on next step
-            } else {
-                std::cerr << "Error: -m flag passed without algorithm name.\n";
-                return 1;
-            }
-        }
+    std::unique_ptr<tsp::Solver> solver = makeSolver(algorithm);
+    if (!solver) {
+        std::cerr << "Error: unknown or not yet implemented algorithm '" << algorithm << "'.\n";
+        printUsage(argv[0]);
+        return 1;
     }
 
-    // Run the parser, solver and output tour file
     try {
-        // Parse the instance file
         tsp::TspParser parser;
-        tsp::TspInstance instance = parser.parse(instancePath);
+        tsp::TspInstance instance = parser.parse(paths[0]);
 
-        // Pick the solver
-        std::unique_ptr<tsp::Solver> solver;
-        if (algorithm == "trivial") {
-            solver = std::make_unique<tsp::TrivialSolver>();
-        } else {
-            std::cerr << "Error: Unknown algorithm '" << algorithm << "'.\n";
-            return 1;
-        }
-
-        // Run solver
         tsp::Tour tour = solver->solve(instance);
 
-        // Write the tour file
         tsp::TourWriter writer;
-        writer.write(instance, tour, outputPath);
+        writer.write(instance, tour, paths[1]);
 
-        std::cout << "Successfully solved " << instance.getName() 
-                  << " using " << algorithm << ".\n";
-
+        std::cout << "Successfully solved " << instance.getName() << " using " << algorithm << ".\n";
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << "\n";
         return 1;

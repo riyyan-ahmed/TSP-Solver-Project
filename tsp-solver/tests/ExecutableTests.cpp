@@ -1,12 +1,13 @@
-// Runs the real TSPsolver binary, as a user would from the shell
+// Take help from Claude (Claude Sonnet 5.5), 2026-10-13 -> We used AI to write slurp, and some part of Test F
 #include <gtest/gtest.h>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <vector>
+#include <sys/wait.h>
 #include "TspParser.hpp"
-
 #ifndef TSP_SOLVER_EXE
 #error "TSP_SOLVER_EXE must be defined by the build system"
 #endif
@@ -70,6 +71,35 @@ TEST_F(Executable, FailsOnMissingInstance) {
 
 TEST_F(Executable, FailsWithoutArguments) {
     EXPECT_NE(runSolver(""), 0);
+}
+
+TEST_F(Executable, AcceptsMethodBeforeThePaths) {
+    EXPECT_EQ(runSolver("-m trivial " + shellQuote(instance) + " " + shellQuote(outPath.string())), 0);
+    EXPECT_TRUE(fs::exists(outPath));
+}
+
+TEST_F(Executable, AcceptsMethodBetweenThePaths) {
+    EXPECT_EQ(runSolver(shellQuote(instance) + " -m trivial " + shellQuote(outPath.string())), 0);
+    EXPECT_TRUE(fs::exists(outPath));
+}
+
+TEST_F(Executable, FailsWhenMethodNameIsMissing) {
+    EXPECT_NE(runSolver(shellQuote(instance) + " " + shellQuote(outPath.string()) + " -m"), 0);
+    EXPECT_FALSE(fs::exists(outPath));
+}
+
+TEST_F(Executable, FailsOnUnknownOption) {
+    EXPECT_NE(runSolver(shellQuote(instance) + " " + shellQuote(outPath.string()) + " -x trivial"), 0);
+    EXPECT_FALSE(fs::exists(outPath));
+}
+
+TEST_F(Executable, FailsOnExtraArgument) {
+    EXPECT_NE(runSolver(shellQuote(instance) + " " + shellQuote(outPath.string()) + " extra"), 0);
+    EXPECT_FALSE(fs::exists(outPath));
+}
+
+TEST_F(Executable, FailsWithOnlyOneArgument) {
+    EXPECT_NE(runSolver(shellQuote(instance)), 0);
 }
 
 TEST_F(Executable, FailsOnUnwritableOutput) {

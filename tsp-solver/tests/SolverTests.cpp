@@ -1,7 +1,7 @@
-// Generated with Claude Code (Claude Sonnet 5.5), 2026-10-14
 #include <gtest/gtest.h>
 #include <algorithm>
 #include <numeric>
+#include <sstream>
 #include <string>
 #include "Algorithms.hpp"
 #include "TspParser.hpp"
@@ -40,7 +40,7 @@ TEST_P(ProvidedInstances, ParseAndTrivialSolve) {
     TspInstance instance = load(GetParam());
     ASSERT_GT(instance.size(), 0u);
 
-    for (std::size_t i = 0; i < instance.size(); ++i) {
+    for (std::size_t i = 0; i < instance.size(); i++) {
         EXPECT_EQ(instance.getCityId(i), static_cast<int>(i) + 1);
         EXPECT_DOUBLE_EQ(instance.getGraph().weight(i, i), 0.0);
     }
@@ -62,8 +62,8 @@ TEST(ProvidedInstanceSizes, MatchTheirNames) {
 TEST(ProvidedInstanceValues, Gr17MatrixIsSymmetric) {
     TspInstance instance = load("lower_diag/gr17.tsp");
     const Graph& g = instance.getGraph();
-    for (std::size_t i = 0; i < g.size(); ++i)
-        for (std::size_t j = 0; j < g.size(); ++j)
+    for (std::size_t i = 0; i < g.size(); i++)
+        for (std::size_t j = 0; j < g.size(); j++)
             EXPECT_DOUBLE_EQ(g.weight(i, j), g.weight(j, i));
 }
 
@@ -71,7 +71,7 @@ TEST(TrivialSolver, ReturnsIdentityPermutation) {
     TspInstance instance = load("coord/berlin52.tsp");
     Tour tour = TrivialSolver().solve(instance);
     ASSERT_EQ(tour.size(), 52u);
-    for (std::size_t i = 0; i < tour.size(); ++i) {
+    for (std::size_t i = 0; i < tour.size(); i++) {
         EXPECT_EQ(tour[i], i);
     }
 }

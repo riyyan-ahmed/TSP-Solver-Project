@@ -6,24 +6,13 @@
 
 
 namespace tsp {
-
-    // writes a tour in the TOUR format as asked
-    /*
-    NAME : <name>.tour
-    TYPE : TOUR
-    DIMENSION : <n>
-    TOUR_SECTION
-    <city ids, one per line>
-    -1
-    EOF
-    */ 
-     
+    /** Writes a tour in the TOUR format (NAME, TYPE, DIMENSION, TOUR_SECTION, ids, -1, EOF). */
     class TourWriter {
         public:
-            // throws std::runtime_error if the file cannot be written
+            /** Writes the tour to the file at filePath. */
             void write(const TspInstance& instance, const Tour& tour, const std::string& filePath) const;
 
-            // validation for tour does visit every city exactly one
+            /** Writes the tour to a stream (purpose of this is to be used by the tests). */
             void write(const TspInstance& instance, const Tour& tour, std::ostream& output) const;
     };
 }

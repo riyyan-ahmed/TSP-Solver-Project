@@ -1,11 +1,11 @@
-# --- macOS Junk ---
+# macOS Junk
 .DS_Store
 .DS_Store?
 ._*
 .Spotlight-V100
 .Trashes
 
-# --- Build Folders & Artifacts ---
+# Build Folders & Artifacts
 build/
 **/build/
 bin/
@@ -18,16 +18,13 @@ CMakeFiles/
 cmake_install.cmake
 Makefile
 
-# --- Compiled Executables ---
+# Compiled Executables
 TSPsolver
 
-# --- Python Cache ---
+# Python Cache 
 __pycache__/
 *.py[cod]
 
-# --- Editor / IDE ---
+# Editor / IDE
 .vscode/
 .idea/
-
-# --- Generated Solver Outputs (Optional) ---
-output/*.tour

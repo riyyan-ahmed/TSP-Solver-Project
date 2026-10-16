@@ -1,4 +1,3 @@
-// Generated with Claude Code (Claude Sonnet 5.5), 2026-10-14
 #include <gtest/gtest.h>
 #include <stdexcept>
 #include "CoordinatesGraph.hpp"
@@ -14,9 +13,9 @@ TEST(CoordinatesGraph, ComputesEuclideanDistance) {
 
 TEST(CoordinatesGraph, IsSymmetricWithZeroDiagonal) {
     CoordinatesGraph graph({{1.5, -2.0}, {7.25, 3.0}, {-4.0, 0.5}});
-    for (std::size_t i = 0; i < graph.size(); ++i) {
+    for (std::size_t i = 0; i < graph.size(); i++) {
         EXPECT_DOUBLE_EQ(graph.weight(i, i), 0.0);
-        for (std::size_t j = 0; j < graph.size(); ++j) {
+        for (std::size_t j = 0; j < graph.size(); j++) {
             EXPECT_DOUBLE_EQ(graph.weight(i, j), graph.weight(j, i));
         }
     }
@@ -24,9 +23,9 @@ TEST(CoordinatesGraph, IsSymmetricWithZeroDiagonal) {
 
 TEST(CoordinatesGraph, SatisfiesTriangleInequality) {
     CoordinatesGraph graph({{0, 0}, {10, 1}, {4, 9}, {-3, 5}});
-    for (std::size_t a = 0; a < graph.size(); ++a)
-        for (std::size_t b = 0; b < graph.size(); ++b)
-            for (std::size_t c = 0; c < graph.size(); ++c)
+    for (std::size_t a = 0; a < graph.size(); a++)
+        for (std::size_t b = 0; b < graph.size(); b++)
+            for (std::size_t c = 0; c < graph.size(); c++)
                 EXPECT_LE(graph.weight(a, c), graph.weight(a, b) + graph.weight(b, c) + 1e-9);
 }
 
@@ -61,7 +60,6 @@ TEST(MatrixGraph, RejectsOutOfRangeIndex) {
     EXPECT_THROW(graph.weight(0, 2), std::out_of_range);
 }
 
-// Example instance from the project specification (figure 2)
 TEST(TourLength, MatchesSpecificationExample) {
     MatrixGraph graph({{0, 5, 8, 6}, {5, 0, 4, 7}, {8, 4, 0, 3}, {6, 7, 3, 0}});
     EXPECT_DOUBLE_EQ(graph.tourLength({0, 1, 2, 3}), 18.0);
