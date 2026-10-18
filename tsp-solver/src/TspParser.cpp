@@ -4,7 +4,7 @@
 #include <stdexcept>
 
 
-// Generated with Claude Code (Claude Opus 5.5), 2026-09-25
+// Generated with Claude (Claude Opus 5.5), 2026-09-25
 namespace {
     /** Removes spaces, tabs and line breaks at both ends of the text. */
     std::string trim(const std::string &text) {

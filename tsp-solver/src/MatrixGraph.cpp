@@ -7,7 +7,7 @@
 namespace tsp {
 
 MatrixGraph::MatrixGraph(DistanceMatrix distances) : distances(std::move(distances)) {
-    // Generated with Claude Code (Claude Opus 5.5), 2026-10-07
+    // Generated with Claude (Claude Opus 5.5), 2026-10-07
     if (this->distances.empty()) {
         throw std::invalid_argument("Distance matrix cannot be empty");
     }

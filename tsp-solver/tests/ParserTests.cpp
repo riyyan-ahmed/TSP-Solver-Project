@@ -1,4 +1,4 @@
-// Generated with Claude Code (Claude Sonnet 5.5), 2026-10-13 -> We used AI to format the text strings and some tests below
+// Generated with Claude (Claude Sonnet 5.5), 2026-10-13 -> We used AI to format the text strings and some tests below
 #include <gtest/gtest.h>
 #include <cmath>
 #include <sstream>
