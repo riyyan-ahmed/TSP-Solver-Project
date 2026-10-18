@@ -58,11 +58,11 @@ The tours produced for the provided instances were checked with the course solut
 
 \section{Introduction}
 
-The goal of the project~\cite{subject} is a program that reads a TSP instance, computes a Hamiltonian cycle and writes it to a file. The specification asks for a build script at the root of the project, a \texttt{TSPsolver} executable taking an instance path, an output path and an optional method name, and a \texttt{tests} executable. It also fixes the input formats, namely a list of planar coordinates and the lower triangle of a weight matrix, and the output format, a permutation list ended by $-1$ and \texttt{EOF}.
+The project~\cite{subject} aims to write a program that reads a TSP instance, calculates a Hamiltonian cycle, and prints it out to a file. It is required that the specification contains a build script located at the root of the project, an executable named \texttt{TSPsolver} that reads an instance path, an output path and that may take an optional method name, and an executable named \texttt{tests} that reads an instance path and an output path location. It also corrects the input formats: a list of planar coordinates followed by a lower triangular weight matrix, and the output format - a list of permutations terminated with -1 and \texttt{EOF}.
 
-Because the grading puts half of its weight on design quality, we separated the program into small components with clear responsibilities. Instance representation, distance computation, parsing, validation of tours and output are each handled by their own class, and each is covered by tests.
+The grading puts half of the weight on design quality, so we divided the program into small parts with clear responsibilities. Each of instance representation, distance computation, parsing, validation of tours and output is implemented in a separate class and each has tests.
 
-This report covers the mid-term checkpoint, for which the program must support the trivial method only. The Held-Karp algorithm and a third method of our choice will be added for the final submission, on top of the same parser, graph and output classes.
+This report covers the mid-term checkpoint, for which the program must support the trivial method only. For the final submission, in addition to the same parser, graph and output classes, the Held-Karp algorithm will be included, as well as a third algorithm of our own choice.
 
 \section{Team and organisation}\label{sec-team}
 
@@ -117,25 +117,25 @@ Date & Who & Work & Commit \\
 
 \subsection{Setting up the project}
 
-After dividing the work on 23 September, we started implementing the project locally, and on 30 September we made our first push to the remote repository. The project is based on the template provided with the course, which already separates headers, sources and tests. We kept this layout. On 1 October we wrote the first version of the parser together with the code for the lower triangular matrix format, and created the empty files for the remaining parts of the architecture so that the structure was fixed before any algorithm existed.
+We split up the work on 23 September so we began implementing it locally, and on 30 September, we pushed our first work to the remote repository. This project is based on a template provided in the course, which has already separated headers, sources and tests. This layout was retained. Together with the code for the lower triangular matrix format, we wrote the first version of the parser on 1 October together with the empty files for the rest of the architecture to fix the structure before the algorithm existed.
 
-The TSPLIB header needed some care. The entries may come in any order, the separator may or may not be preceded by a space across the provided files, and some entries such as comments can contain a second separator inside the value. We therefore split each header line at the first separator only, trim both parts, and ignore the entries we do not need.
+The header of the TSPLIB had to be taken care of a little bit. The order of the entries is arbitrary, there may be no space in the files before the separator, some entries (e.g. comments) may include another separator within the value, and there may be any number of files. Thus, each line of the header is split only at the first separator, both the left and right parts of the split line are trimmed, and entries that are not required are discarded.
 
 \subsection{Matrix instances and the first solver}
 
-By 10 October the parser handled the lower triangular format and the trivial method existed. Two properties of the provided files caused most of the work in this phase. First, the matrix is not guaranteed to be laid out with one row per line, so we read it as a stream of integers and rebuild the rows from the dimension. Second, one instance (\texttt{dantzig42}) is followed by a display data section holding coordinates that are only meant for drawing. Since the parser otherwise rejects data after the matrix, this section has to be recognised explicitly. We skip it up to the closing keyword and still reject any other trailing data.
+By 10 October the parser was able to deal with the lower triangular format and the trivial method existed. Most of the work in this phase was due to two properties of the provided files. First, the matrix may not be written row-wise, that is, one row per line, so it's read as a stream of integers and reconstructed based on the dimension. Second, one instance (\texttt{dantzig42}) is followed by a display data section containing coordinates which are only intended for display. This section needs to be recognised explicitly since the parser otherwise rejects data after the matrix. It delays to the next key word, and ignores any following information.
 
 \subsection{Command line and coordinate instances}
 
-On 12 October we wrote the command line handling and connected the parser, the solver and the writer in \texttt{main}, so that the complete pipeline ran for the trivial method on the matrix instances. The build script was briefly lost during a clean up, and we restored it the same night, which showed us how easy it is to break the one requirement that is checked first. We then added the coordinate format in three small steps, the graph class, the Euclidean distance and the parsing of the coordinate section.
+On 12 October we wrote the command line handling and connected the parser, the solver and the writer in \texttt{main}, so that the complete pipeline ran for the trivial method on the matrix instances. We lost the build script for a few minutes during a cleanup, and restored that same night to see how easy it can be to mess up the single requirement that is checked first. We then added the coordinate format in three small steps, the graph class, the Euclidean distance and the parsing of the coordinate section.
 
 Since nothing forces the lines of a coordinate file to be sorted, each city is stored at the position given by its identifier, and the identifiers are kept so that the tour file uses those of the input (Section~\ref{sec-parsing}).
 
 \subsection{Review and tests}
 
-On 14 October we reviewed the code against the specification and wrote the test suite. The review found several defects that our manual runs had not shown: the test files were ignored by Git, an out of range matrix index caused undefined behaviour, the coordinate parser accepted data after \texttt{EOF}, and the build did not produce \texttt{build/TSPsolver} (challenges 3 and 4 in Table~\ref{tab-challenges}). The most instructive one concerned the tour writer. It opened the output file, which empties it, before checking that the tour was valid, so a faulty solver would have erased a previous result. The check now runs before the file is opened, and a test verifies that an invalid tour leaves an existing file unchanged.
+We reviewed code with the specification and wrote the test suite (on 14 October). Our manual runs did not detect some of the defects the review found: the test files were ignored by Git, an out of range matrix index caused undefined behaviour, the build did not yield \texttt{build/TSPsolver} (challenges 3 and 4 in Table~\ref{tab-challenges}) and the coordinate parser accepted data after \texttt{EOF}. The most informative one had to do with the tour writer. It opened the output file, which will delete the file's contents when reading that file, before verifying that the tour is valid, so a bad solver would have deleted a previous result. The check is now performed before opening a file, and a test ensures that if an invalid tour is entered, no changes are made to an existing file.
 
-The points that the subject leaves open, such as the optional \texttt{EOF} keyword and the distance types of coordinate files, are discussed with our decisions in Section~\ref{sec-limits}.
+The choices we make for these points are discussed and the alternatives left in the language by the subject are discussed in Section~\ref{sec-limits}.
 
 \subsection{Main challenges}\label{sec-challenges}
 
@@ -162,7 +162,7 @@ Table~\ref{tab-challenges} summarises the five main challenges we met, with thei
 \label{tab-challenges}
 \end{table}
 
-The two hardest challenges were the first and the third of Table~\ref{tab-challenges}. Replacing our first data structure meant rewriting the instance class and part of the parser after the first push, but it paid off: the coordinate format was later added in three small commits without touching the existing code. The build problems were harder to notice, because the program worked on our machines while the exact commands of the specification failed; since then we check the build from a clean copy of the repository, as a grader would.
+The first and third of Table~\ref{tab-challenges} were the two most difficult challenges. After the first push, we had to replace our first data structure, and in the process, we had to rewrite the instance class and part of the parser. But it was worth it—because we later added the coordinate format using 3 small commits without changing the parser. The build issues were more subtle, since the program ran on our machines, but the exact commands of the specification did not; since then we run build from a clean checkout of the repository, as a grader would do.
 
 \section{Tools and libraries}
 
@@ -197,7 +197,7 @@ Python~3 & Running the generator, the checker script and a small timing script \
 
 \subsection{Overview}
 
-The code is organised as a static library that contains all the logic, and two executables that use it. The first executable, \texttt{TSPsolver}, contains only the entry point. The second, \texttt{tests}, links against the same library. This separation matters for testing, since no test needs to run the program through its entry point to reach the parser or the solvers. Figure~\ref{fig-structure} shows the directories of the project.
+The code is structured as a static library with all the logic in it, and two executables that rely on it. The first executable file, \texttt{TSPsolver}, has only one function: the entry point. The second, \texttt{tests}, uses the same library. This separation is important for testing because no test should be required to call the program through its entry point to get to the parser or to the solvers. Figure~\ref{fig-structure} shows the directories of the project. 
 
 \begin{figure}[H]
 \centering\footnotesize
@@ -225,7 +225,7 @@ TSP-Solver-Project/
 
 \subsection{From a matrix to a graph hierarchy}\label{sec-why-classes}
 
-Our first version (commit \commit{30e5ed7}) stored every instance as a single distance matrix inside \texttt{TspInstance}. It was quick to write, but it tied the future algorithms to one storage format, it discarded the coordinates of coordinate files, and it left no natural place for the distance computation. We therefore moved to a small class hierarchy (commit \commit{e8f5266}), modelled on the graph library of the object oriented programming lab~\cite{tp4}. Table~\ref{tab-lab} shows the correspondence.
+The first version (commit \commit{30e5ed7}) kept all the instances as one distance matrix in the object \texttt{TspInstance}. It was easy to write, but limited the future algorithms to one kind of storage, lost coordinates of coordinate files and had no natural site for the distance computation. For this reason we opted for a small class hierarchy (commit \commit{e8f5266}) similar to the one used for the graph library of the object oriented programming lab~\cite{tp4}. The correspondence is given in Table~\ref{tab-lab}. 
 
 \begin{table}[htbp]
 \centering\small
@@ -255,17 +255,17 @@ Figure~\ref{fig-uml} shows the resulting classes. The parser creates a \texttt{T
 
 \subsection{Representation of an instance}
 
-An instance combines a name, the identifiers of the cities as written in the file, and a graph. The graph is an abstract class with two operations, which return the number of vertices and the weight of an edge, plus a function that computes the length of a tour. Placing this function in the base class guarantees that every graph and every solver evaluates a tour in the same way.
+An instance consists of a name, the identifiers of the cities as given in the file and a graph. The graph is an abstract class and it has two operations – one returns the number of vertices, the other returns the weight of a given edge, and a third to calculate the length of a tour. This function is placed in the base class to ensure that all graph and all solver compute a tour in the same manner.
 
-The matrix graph stores the full symmetric matrix built from the lower triangle. Since the graph is complete, a dense matrix is the natural storage: an adjacency list would hold the same $n(n-1)/2$ edges with slower lookups, while the matrix answers \texttt{weight(i,j)} in constant time. The coordinate graph stores only the points and computes each distance on demand, so its memory grows linearly with the number of cities instead of quadratically. Both classes hide their storage behind the same interface, so a solver is written once for both formats, and both validate their input and indices, so that a defect produces an exception and not undefined behaviour.
+The lower triangle of this matrix is saved in the matrix graph. The graph is complete, thus an adjacency list would contain as many $n(n-1)/2$ edges, and would require a longer time to find an edge, while the graph would be stored as a dense matrix, and would answer \texttt{weight(i,j)} in constant time. The memory requirement of coordinate graph is linear in the number of cities, because it keeps only the points, it calculates all the distances when needed. Both classes have the same interface, so a solver is written once and can be used with both, and both check their inputs and indices and throw exceptions if they are bad, so that a bad input or bad index does not result in undefined behaviour.
 
-Vertices are numbered from zero inside the program. The tour writer is the only place where they are converted back to the identifiers of the file, which keeps off by one errors out of the algorithms.
+In the program, vertices are numbered starting from 0. They're only converted back to the identifiers of the file at the tour writer, taking one of the algorithms with them.
 
 \subsection{Parsing}\label{sec-parsing}
 
-The parser works in two stages. The header stage reads the \texttt{key : value} lines up to the keyword that opens the data section, and checks that the name, the type and a positive dimension are present. That keyword then selects the data stage, implemented in a separate file for each format. The matrix stage also requires explicit weights in the lower diagonal row format, since other layouts would be read incorrectly. The coordinate stage accepts identifiers starting at 1 (TSPLIB files) or at 0 (course generator) and stores each city at the position given by its identifier.
+The parser is broken into two phases. The header stage reads the lines of \texttt{key : value} till it encounters the keyword at which the data section begins and verifies the presence of the name, the type and the presence of a positive dimension. The keyword then is used to select the data stage, each of which is implemented in a separate file for each format. In addition, the matrix stage needs explicit weights in the matrix format with a row of zeros in the lower diagonal format, because otherwise they will be read incorrectly. The identifier is supplied from 1 to the coordinate stage (for TSPLIB files) or from 0 to the coordinate stage (for course generator); each city is placed on the coordinate stage at the position specified by its identifier.
 
-Besides a file path, the parser accepts any input stream, which lets the tests supply small malformed inputs as strings. Each call resets the state of the parser, so one parser can read several instances. Errors are reported as exceptions whose message names the problem, and only the entry point shows them to the user. We chose exceptions because a parsing failure cannot be corrected locally, and they keep the normal path of the code readable.
+The parser can be fed anything other than a file path, allowing the tests to provide it with small malformed inputs as strings. One parser can read several instances, each call resets the state of the parser. Errors are reported as exceptions, with the name of the error as a message, and only at the entry point. Exceptions were selected because they are not amenable to local correction when a parsing failure occurs and because they maintain the readability of the normal path of the code.
 
 The parser is strict about content that changes the meaning of the instance (negative weights, a non zero diagonal, duplicate identifiers, missing or trailing data) and tolerant about the rest, such as spacing around separators, blank lines, Windows line endings and unknown header entries.
 
@@ -279,7 +279,7 @@ The tour writer converts a tour to the output format. Before writing, it checks 
 
 \subsection{Entry point and error handling}
 
-The entry point reads the arguments, parses the instance, runs the selected solver and writes the tour. It expects exactly two paths, the instance and the output file, and accepts the option \texttt{-m} followed by a method name anywhere on the command line. Any other option, a missing or extra path, a \texttt{-m} without a value and an unknown method each print a message with the usage and return a non zero status, and the method name is checked before the instance is read. Every error raised by the library, whether in parsing, solving or writing, is an exception derived from the standard exception class. The entry point catches it in one place, prints its message on the error stream and returns the same status. The library classes never print anything themselves, which keeps them reusable and lets the tests check errors without parsing text.
+The entry point reads the arguments, parses the instance and then calls the solver given in the argument and writes the tour. It requires two arguments: the instance and the output file, and it can take any number of times at the command-line the option \texttt{-m} (method name). If any other option is specified, it is a missing or extra path, a \texttt{-m} without a value, and a return of non zero status, the method name is checked before reading the instance, and a message is printed with the usage. All errors thrown by the library, both in parsing and in solving or even writing, are exceptions that are derived from the standard exception class. The entry point captures it where it is seen, prints the message from the entry point to the error stream and returns the same status. The library classes do not print anything themselves so they are reusable and the tests check the errors without parsing the text.
 
 Figure~\ref{fig-flow} shows how these components are connected when the program runs.
 
@@ -485,9 +485,10 @@ The tour files of the 15 provided instances were submitted to the course solutio
 
 \section{Performance evaluation}\label{sec-perf}
 
-At this checkpoint only the trivial method exists, so we measure it as the baseline for the methods of the final submission. All times are averages of 5 complete runs (start, reading, solving, writing) on an Apple M5 laptop with 24\,GB of memory, compiled with Apple clang 21 in release mode (\texttt{-O3}).
+The only method here is trivial, so we use the trivial method as a baseline of the methods in the last checkpoint. All times reported are averages of 5 complete runs (start, read, solve, write) on an Apple M5 laptop running 24\,GB of memory and compiled by Apple clang 21 with \texttt{-O3} release compilation mode.
 
-\paragraph{Solution quality.} Table~\ref{tab-quality} compares the length of the trivial tour with the optimal tour length of each instance. The optimum is not computed by our program: it is the value published with TSPLIB~\cite{tsplib} for each instance. The trivial lengths are computed with the TSPLIB distance functions, as the course checker does (both give 4722 for \texttt{gr17}). The gap is $(\mathrm{trivial} - \mathrm{optimum}) / \mathrm{optimum}$.
+\paragraph{Solution quality.} 
+Table~\ref{tab-quality} shows a comparison of the length of the trivial tour with the optimal tour length of each instance. Our program does not compute the optimum - it is the value that is published with TSPLIB~\cite{tsplib} for each instance. The trivial lengths are calculated using the distance functions in the TSPLIB package, which is what the course checker does (these give 4722 for \texttt{gr17}). The gap is $(\mathrm{trivial} - \mathrm{optimum}) / \mathrm{optimum}$.
 
 \begin{table}[htbp]
 \centering\small
@@ -580,9 +581,9 @@ Distances of coordinate files & Plain Euclidean distance, whatever \texttt{EDGE\
 \label{tab-decisions}
 \end{table}
 
-The main limitation is the last decision. TSPLIB defines several distance functions: rounded Euclidean (\texttt{EUC\_2D}), geographical (\texttt{GEO}) and pseudo Euclidean (\texttt{ATT}). Our coordinate graph uses the plain Euclidean distance without rounding for every file. The tours we write are not affected, since the trivial method does not use distances, but the lengths our program would compute differ from the official ones. The difference is small for \texttt{EUC\_2D} files (\texttt{eil76}: 1974.7 instead of 1969), but large for the other types, because \texttt{GEO} coordinates are latitudes and longitudes and \texttt{ATT} uses a scaled distance (\texttt{burma14}: 42.5 instead of 4562; \texttt{att48}: 157\,530 instead of 49\,840). This must be fixed before comparing the lengths of the next methods with the published optima.
+The major constraint is the final decision. The distance functions defined in TSPLIB are: rounded Euclidean (\texttt{EUC\_2D}), geographical (\texttt{GEO}) and pseudo Euclidean (\texttt{ATT}). For all of our files, our coordinate graph is designed with a plain Euclidean distance but not rounded distances. The tours written by us are not affected, as it is a trivial method that isn't based on distance, but the lengths of the tours that our program produces would differ from the official ones. The difference is small for \texttt{EUC\_2D} files (\texttt{eil76}: 1974.7 vs. 1969), but large for the other types of file because \texttt{GEO} coordinates are latitudes/longitudes and \texttt{ATT} uses a scaled distance (\texttt{burna14}: 42.5 vs. 4562; \texttt{att48}: 157\,530 vs. 49\,840). This should be corrected before comparing the lengths of the following methods with published optima.
 
-The second limitation is that the trivial method makes no attempt to produce a short tour, since its purpose is to validate the pipeline from parsing to output (Table~\ref{tab-quality}).
+The second drawback is that this is the trivial solution and does not attempt to find a short tour, as it is designed to test the pipeline from parsing to output (Table~\ref{tab-quality}).
 
 \section{Future work}\label{sec-future}
 
@@ -601,7 +602,43 @@ The most useful decision of the first weeks was to fix the structure of the code
 Two further lessons came from the last days before the checkpoint. First, a program that works on our machines is not enough: the build has to be checked exactly as the grader will run it, from a clean copy and with the commands of the subject, which is how we found that the executable had the wrong name and location. Second, working on two separate branches for two weeks made the final merge harder than it needed to be. Agreeing on the shared classes first helped, but merging more often would have shown integration problems earlier.
 
 \section{Use of AI tools}
+% Requires in the preamble: \usepackage{hyperref}
 
+\subsection*{Tools used}
+\begin{itemize}
+  \item Claude Opus 5.5 and Claude Sonnet 5.5 (Anthropic), between 25 September and 13 October 2026.
+\end{itemize}
+
+\subsection*{AI-generated code}
+Each part is marked in the code with a comment naming the tool and the date.
+\begin{itemize}
+  \item \texttt{src/TspParser.cpp}, function \texttt{trim()} (Claude Opus 5.5, 25 September): the helper that removes spaces, tabs and line breaks at both ends of a header line.
+  \item \texttt{src/MatrixGraph.cpp}, constructor checks (Claude Opus 5.5, 7 October): the two checks that reject an empty or a non-square distance matrix.
+  \item \texttt{tests/ParserTests.cpp} (Claude Sonnet 5.5, 13 October): formatting of the small instance texts used as test input, and some of the parser tests.
+  \item \texttt{tests/ExecutableTests.cpp} (Claude Sonnet 5.5, 13 October): the helper \texttt{slurp()}, which reads a whole output file into a string, and part of the \texttt{TEST\_F} tests that run the executable.
+\end{itemize}
+
+\subsection*{Code written without AI}
+\begin{itemize}
+  \item All other source files, headers and tests, the CMake file and the build script.
+\end{itemize}
+
+\subsection*{How we checked the AI-generated parts}
+\begin{itemize}
+  \item We read and understood each part before keeping it, and adapted it to our code.
+  \item Every part is covered by the test suite (92 tests passing), and the output tours were validated with the course checker.
+\end{itemize}
+
+\subsection*{Other uses of AI (not code)}
+\begin{itemize}
+  \item Explanations of C++ concepts while learning (e.g.\ \texttt{std::move}, \texttt{unique\_ptr}, virtual functions, parsing with streams and other complex concepts).
+  \item Review of the code against the specification, to find missing requirements and bugs.
+\end{itemize}
+
+\subsection*{DALIA self-assessment}
+\begin{itemize}
+  \item \textbf{D2, AI-Augmented} (\href{http://daliascale.org/}{daliascale.org}): generative AI contributed without altering the meaning of the work; human intent, direction and judgment dominated throughout.
+\end{itemize}
 
 \begin{thebibliography}{9}
 \bibitem{subject} E.~Foussard. \emph{Project -- Solving the Travelling Salesman Problem}. Programming course, M1 AI, Universit\'e Grenoble Alpes, 2026.
