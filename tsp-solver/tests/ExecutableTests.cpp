@@ -36,6 +36,25 @@ namespace {
         return content.str();
     }
 
+    // true if the tour section of the file lists each city id from 1 to n exactly once
+    bool tourIdsArePermutation(const fs::path& path, int n) {
+        std::istringstream in(slurp(path));
+        std::string line;
+        while (std::getline(in, line) && line != "TOUR_SECTION") {}
+
+        std::vector<bool> seen(n + 1, false);
+        int id = 0;
+        int count = 0;
+        while (in >> id && id != -1) {
+            if (id < 1 || id > n || seen[id]) {
+                return false;
+            }
+            seen[id] = true;
+            ++count;
+        }
+        return count == n;
+    }
+
     class Executable : public ::testing::Test {
     protected:
         fs::path outPath = fs::temp_directory_path() / "tsp_executable_test.tour";
@@ -125,4 +144,15 @@ TEST_F(Executable, OutputCanBeReadBackAsAPermutation) {
         ++count;
     }
     EXPECT_EQ(count, 52);
+}
+
+TEST_F(Executable, SolvesWithMstMethod) {
+    ASSERT_EQ(runSolver(shellQuote(instance) + " " + shellQuote(outPath.string()) + " -m mst"), 0);
+    EXPECT_TRUE(tourIdsArePermutation(outPath, 17));
+}
+
+TEST_F(Executable, SolvesWithMstTwoOptMethod) {
+    const std::string coordInstance = std::string(TSP_INSTANCES_DIR) + "/coord/berlin52.tsp";
+    ASSERT_EQ(runSolver(shellQuote(coordInstance) + " " + shellQuote(outPath.string()) + " -m mst-2opt"), 0);
+    EXPECT_TRUE(tourIdsArePermutation(outPath, 52));
 }

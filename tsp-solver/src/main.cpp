@@ -4,21 +4,31 @@
 #include <string>
 #include <vector>
 #include "Algorithms.hpp"
+#include "ConstructAndImproveSolver.hpp"
+#include "MstConstructor.hpp"
 #include "TourWriter.hpp"
 #include "TspParser.hpp"
+#include "TwoOpt.hpp"
 
 
 
 namespace {
     /** Prints how to call the program. */
     void printUsage(const char* program) {
-        std::cerr << "Usage: " << program << " <instance_path> <output_path> [-m <algorithm>]\n" << "Algorithms: trivial (default)\n";
+        std::cerr << "Usage: " << program << " <instance_path> <output_path> [-m <algorithm>]\n" << "Algorithms: trivial (default), mst, mst-2opt\n";
     }
 
     /** Returns the solver for an algorithm name, or nullptr if it does not exist. */
     std::unique_ptr<tsp::Solver> makeSolver(const std::string& algorithm) {
         if (algorithm == "trivial") {
             return std::make_unique<tsp::TrivialSolver>();
+        }
+        if (algorithm == "mst") {
+            return std::make_unique<tsp::ConstructAndImproveSolver>(std::make_unique<tsp::MstConstructor>());
+        }
+        if (algorithm == "mst-2opt") {
+            return std::make_unique<tsp::ConstructAndImproveSolver>(std::make_unique<tsp::MstConstructor>(),
+                                                                    std::make_unique<tsp::TwoOpt>());
         }
         return nullptr;
     }
