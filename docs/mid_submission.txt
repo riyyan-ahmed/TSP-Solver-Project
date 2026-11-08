@@ -1,0 +1,6 @@
+Your submission should contain the following elements:
+
+The source files of your project: it is expected to follow the project specifications mentioned in the subject, and support the trivial method.
+A report, which must contain:
+A chronological documentation of your process over the course of the project, including any challenges you faced and how you overcame them, your reflections on the project, your use the tools and libraries, your use of AI tools, etc.
+An explanation of your design choices and the structure of your code.

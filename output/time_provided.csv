@@ -1,0 +1,16 @@
+instance,n,avg_ms
+att48.tsp,48,3.25
+berlin52.tsp,52,1.83
+burma14.tsp,14,2.10
+ch130.tsp,130,2.07
+eil76.tsp,76,2.83
+pr1002.tsp,1002,8.72
+pr299.tsp,299,3.80
+pr76.tsp,76,5.85
+st70.tsp,70,4.69
+ulysses16.tsp,16,2.89
+dantzig42.tsp,42,2.23
+gr17.tsp,17,2.61
+gr21.tsp,21,4.07
+gr24.tsp,24,4.16
+gr48.tsp,48,6.19

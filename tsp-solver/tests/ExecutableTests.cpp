@@ -1,12 +1,14 @@
-// Runs the real TSPsolver binary, as a user would from the shell
+// Take help from Claude (Claude Sonnet 5.5), 2026-10-13 -> We used AI to write slurp, and some part of Test F
+// Partly written by Claude (Claude Opus 5.5), 2026-11-07: the tests of the nn and nn-2opt methods
 #include <gtest/gtest.h>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <vector>
+#include <sys/wait.h>
 #include "TspParser.hpp"
-
 #ifndef TSP_SOLVER_EXE
 #error "TSP_SOLVER_EXE must be defined by the build system"
 #endif
@@ -33,6 +35,25 @@ namespace {
         std::stringstream content;
         content << in.rdbuf();
         return content.str();
+    }
+
+    // true if the tour section of the file lists each city id from 1 to n exactly once
+    bool tourIdsArePermutation(const fs::path& path, int n) {
+        std::istringstream in(slurp(path));
+        std::string line;
+        while (std::getline(in, line) && line != "TOUR_SECTION") {}
+
+        std::vector<bool> seen(n + 1, false);
+        int id = 0;
+        int count = 0;
+        while (in >> id && id != -1) {
+            if (id < 1 || id > n || seen[id]) {
+                return false;
+            }
+            seen[id] = true;
+            ++count;
+        }
+        return count == n;
     }
 
     class Executable : public ::testing::Test {
@@ -72,6 +93,35 @@ TEST_F(Executable, FailsWithoutArguments) {
     EXPECT_NE(runSolver(""), 0);
 }
 
+TEST_F(Executable, AcceptsMethodBeforeThePaths) {
+    EXPECT_EQ(runSolver("-m trivial " + shellQuote(instance) + " " + shellQuote(outPath.string())), 0);
+    EXPECT_TRUE(fs::exists(outPath));
+}
+
+TEST_F(Executable, AcceptsMethodBetweenThePaths) {
+    EXPECT_EQ(runSolver(shellQuote(instance) + " -m trivial " + shellQuote(outPath.string())), 0);
+    EXPECT_TRUE(fs::exists(outPath));
+}
+
+TEST_F(Executable, FailsWhenMethodNameIsMissing) {
+    EXPECT_NE(runSolver(shellQuote(instance) + " " + shellQuote(outPath.string()) + " -m"), 0);
+    EXPECT_FALSE(fs::exists(outPath));
+}
+
+TEST_F(Executable, FailsOnUnknownOption) {
+    EXPECT_NE(runSolver(shellQuote(instance) + " " + shellQuote(outPath.string()) + " -x trivial"), 0);
+    EXPECT_FALSE(fs::exists(outPath));
+}
+
+TEST_F(Executable, FailsOnExtraArgument) {
+    EXPECT_NE(runSolver(shellQuote(instance) + " " + shellQuote(outPath.string()) + " extra"), 0);
+    EXPECT_FALSE(fs::exists(outPath));
+}
+
+TEST_F(Executable, FailsWithOnlyOneArgument) {
+    EXPECT_NE(runSolver(shellQuote(instance)), 0);
+}
+
 TEST_F(Executable, FailsOnUnwritableOutput) {
     EXPECT_NE(runSolver(shellQuote(instance) + " /no/such/dir/out.tour"), 0);
 }
@@ -95,4 +145,26 @@ TEST_F(Executable, OutputCanBeReadBackAsAPermutation) {
         ++count;
     }
     EXPECT_EQ(count, 52);
+}
+
+TEST_F(Executable, SolvesWithMstMethod) {
+    ASSERT_EQ(runSolver(shellQuote(instance) + " " + shellQuote(outPath.string()) + " -m mst"), 0);
+    EXPECT_TRUE(tourIdsArePermutation(outPath, 17));
+}
+
+TEST_F(Executable, SolvesWithMstTwoOptMethod) {
+    const std::string coordInstance = std::string(TSP_INSTANCES_DIR) + "/coord/berlin52.tsp";
+    ASSERT_EQ(runSolver(shellQuote(coordInstance) + " " + shellQuote(outPath.string()) + " -m mst-2opt"), 0);
+    EXPECT_TRUE(tourIdsArePermutation(outPath, 52));
+}
+
+TEST_F(Executable, SolvesWithNearestNeighbourMethod) {
+    ASSERT_EQ(runSolver(shellQuote(instance) + " " + shellQuote(outPath.string()) + " -m nn"), 0);
+    EXPECT_TRUE(tourIdsArePermutation(outPath, 17));
+}
+
+TEST_F(Executable, SolvesWithNearestNeighbourTwoOptMethod) {
+    const std::string coordInstance = std::string(TSP_INSTANCES_DIR) + "/coord/berlin52.tsp";
+    ASSERT_EQ(runSolver(shellQuote(coordInstance) + " " + shellQuote(outPath.string()) + " -m nn-2opt"), 0);
+    EXPECT_TRUE(tourIdsArePermutation(outPath, 52));
 }
