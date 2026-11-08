@@ -6,6 +6,7 @@
 #include "Algorithms.hpp"
 #include "ConstructAndImproveSolver.hpp"
 #include "MstConstructor.hpp"
+#include "NearestNeighbourConstructor.hpp"
 #include "TourWriter.hpp"
 #include "TspParser.hpp"
 #include "TwoOpt.hpp"
@@ -15,7 +16,7 @@
 namespace {
     /** Prints how to call the program. */
     void printUsage(const char* program) {
-        std::cerr << "Usage: " << program << " <instance_path> <output_path> [-m <algorithm>]\n" << "Algorithms: trivial (default), mst, mst-2opt\n";
+        std::cerr << "Usage: " << program << " <instance_path> <output_path> [-m <algorithm>]\n" << "Algorithms: trivial (default), mst, mst-2opt, nn, nn-2opt\n";
     }
 
     /** Returns the solver for an algorithm name, or nullptr if it does not exist. */
@@ -28,6 +29,13 @@ namespace {
         }
         if (algorithm == "mst-2opt") {
             return std::make_unique<tsp::ConstructAndImproveSolver>(std::make_unique<tsp::MstConstructor>(),
+                                                                    std::make_unique<tsp::TwoOpt>());
+        }
+        if (algorithm == "nn") {
+            return std::make_unique<tsp::ConstructAndImproveSolver>(std::make_unique<tsp::NearestNeighbourConstructor>());
+        }
+        if (algorithm == "nn-2opt") {
+            return std::make_unique<tsp::ConstructAndImproveSolver>(std::make_unique<tsp::NearestNeighbourConstructor>(),
                                                                     std::make_unique<tsp::TwoOpt>());
         }
         return nullptr;

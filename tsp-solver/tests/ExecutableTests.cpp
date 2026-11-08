@@ -1,4 +1,5 @@
 // Take help from Claude (Claude Sonnet 5.5), 2026-10-13 -> We used AI to write slurp, and some part of Test F
+// Partly written by Claude (Claude Opus 5.5), 2026-11-07: the tests of the nn and nn-2opt methods
 #include <gtest/gtest.h>
 #include <cstdlib>
 #include <filesystem>
@@ -154,5 +155,16 @@ TEST_F(Executable, SolvesWithMstMethod) {
 TEST_F(Executable, SolvesWithMstTwoOptMethod) {
     const std::string coordInstance = std::string(TSP_INSTANCES_DIR) + "/coord/berlin52.tsp";
     ASSERT_EQ(runSolver(shellQuote(coordInstance) + " " + shellQuote(outPath.string()) + " -m mst-2opt"), 0);
+    EXPECT_TRUE(tourIdsArePermutation(outPath, 52));
+}
+
+TEST_F(Executable, SolvesWithNearestNeighbourMethod) {
+    ASSERT_EQ(runSolver(shellQuote(instance) + " " + shellQuote(outPath.string()) + " -m nn"), 0);
+    EXPECT_TRUE(tourIdsArePermutation(outPath, 17));
+}
+
+TEST_F(Executable, SolvesWithNearestNeighbourTwoOptMethod) {
+    const std::string coordInstance = std::string(TSP_INSTANCES_DIR) + "/coord/berlin52.tsp";
+    ASSERT_EQ(runSolver(shellQuote(coordInstance) + " " + shellQuote(outPath.string()) + " -m nn-2opt"), 0);
     EXPECT_TRUE(tourIdsArePermutation(outPath, 52));
 }

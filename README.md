@@ -1,4 +1,3 @@
-
 # TSP Solver
 
 C++ solver for the Travelling Salesman Problem (M1 AI programming project, UGA).
@@ -20,7 +19,7 @@ bash
 ./build/TSPsolver <instance_path> <output_path> [-m <algorithm>]
 
 
-Algorithms: trivial (default), mst (tour from a minimum spanning tree), mst-2opt (the same tour improved by 2-opt).
+Algorithms: trivial (default), mst (tour from a minimum spanning tree), mst-2opt (the same tour improved by 2-opt), nn (nearest neighbour tour), nn-2opt (the same tour improved by 2-opt).
 
 Example: ./build/TSPsolver TSP-instances/lower_diag/gr17.tsp gr17.tour
 
@@ -51,7 +50,7 @@ tsp-solver/
 | Graph, MatrixGraph, CoordinatesGraph | Graph.cpp, MatrixGraph.cpp, CoordinatesGraph.cpp | distances between cities |
 | Solver, TrivialSolver | Algorithms.hpp, Trivial.cpp | solving methods |
 | ConstructAndImproveSolver | ConstructAndImproveSolver.cpp | builds a tour, then improves it |
-| TourConstructor, MstConstructor, MinimumSpanningTree | MstConstructor.cpp, MinimumSpanningTree.cpp | build a first tour |
+| TourConstructor, MstConstructor, MinimumSpanningTree, NearestNeighbourConstructor | MstConstructor.cpp, MinimumSpanningTree.cpp, NearestNeighbourConstructor.cpp | build a first tour |
 | TourImprover, TwoOpt | TwoOpt.cpp | improve an existing tour |
 | TourWriter | TourWriter.cpp | writes the tour file |
 | — | main.cpp | command line: parse, solve, write |
