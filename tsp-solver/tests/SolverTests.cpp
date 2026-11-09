@@ -1,10 +1,15 @@
 #include <gtest/gtest.h>
 #include <algorithm>
+#include <cmath>
+#include <memory>
 #include <numeric>
 #include <sstream>
 #include <string>
 #include "Algorithms.hpp"
 #include "TspParser.hpp"
+#include "ConstructAndImproveSolver.hpp"
+#include "NearestNeighbourConstructor.hpp"
+#include "TwoOpt.hpp"
 
 using namespace tsp;
 
@@ -93,3 +98,26 @@ TEST(ProvidedInstanceValues, Ulysses16OptimalTourHasLength6859) {
     EXPECT_DOUBLE_EQ(load("coord/ulysses16.tsp").getGraph().tourLength(tour), 6859.0);
 }
 
+TEST(ProvidedInstanceValues, TourLengthsAreWholeNumbersAndNotBelowTheOptimum) {
+    // optimal tour lengths from TSPLIB
+    struct Known {
+        const char* file;
+        double optimum;
+    };
+    const Known known[] = {
+        {"coord/att48.tsp", 10628}, {"coord/berlin52.tsp", 7542}, {"coord/burma14.tsp", 3323},
+        {"coord/ch130.tsp", 6110}, {"coord/eil76.tsp", 538}, {"coord/pr1002.tsp", 259045},
+        {"coord/pr299.tsp", 48191}, {"coord/pr76.tsp", 108159}, {"coord/st70.tsp", 675},
+        {"coord/ulysses16.tsp", 6859}, {"lower_diag/dantzig42.tsp", 699}, {"lower_diag/gr17.tsp", 2085},
+        {"lower_diag/gr21.tsp", 2707}, {"lower_diag/gr24.tsp", 1272}, {"lower_diag/gr48.tsp", 5046}};
+
+    ConstructAndImproveSolver solver(std::make_unique<NearestNeighbourConstructor>(), std::make_unique<TwoOpt>());
+
+    for (const Known& k : known) {
+        SCOPED_TRACE(k.file);
+        TspInstance instance = load(k.file);
+        const double length = instance.getGraph().tourLength(solver.solve(instance));
+        EXPECT_DOUBLE_EQ(length, std::floor(length));
+        EXPECT_GE(length, k.optimum);
+    }
+}

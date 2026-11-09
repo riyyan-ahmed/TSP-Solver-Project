@@ -28,7 +28,8 @@ namespace tsp
 
         std::size_t size() const override;
 
-        /** Returns the Euclidean distance between points i and j. */
+        /** Returns the distance between points i and j as defined by the EDGE_WEIGHT_TYPE. */
+
         double weight(std::size_t i, std::size_t j) const override;
     };
 }
