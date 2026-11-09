@@ -262,3 +262,18 @@ TEST(Parser, ParsesEveryProvidedInstanceWithItsDeclaredDimension) {
     EXPECT_EQ(parser.parse(dir + "gr24.tsp").size(), 24u);
     EXPECT_EQ(parser.parse(dir + "gr48.tsp").size(), 48u);
 }
+
+TEST(Parser, UsesTheEdgeWeightTypeOfTheFile) {
+    // same two cities, a different distance for each type
+    const std::string head = "NAME: n\nTYPE: TSP\nDIMENSION: 2\nEDGE_WEIGHT_TYPE: ";
+    const std::string points = "NODE_COORD_SECTION\n1 0 0\n2 10 0\nEOF\n";
+    EXPECT_DOUBLE_EQ(parseText(head + "EUC_2D\n" + points).getGraph().weight(0, 1), 10.0);
+    EXPECT_DOUBLE_EQ(parseText(head + "ATT\n" + points).getGraph().weight(0, 1), 4.0);
+    EXPECT_DOUBLE_EQ(parseText(head + "GEO\n" + points).getGraph().weight(0, 1), 1114.0);
+}
+
+TEST(Parser, RejectsUnsupportedEdgeWeightTypeForCoordinates) {
+    EXPECT_THROW(parseText("NAME: n\nTYPE: TSP\nDIMENSION: 1\nEDGE_WEIGHT_TYPE: EUC_3D\n"
+                           "NODE_COORD_SECTION\n1 0 0\nEOF\n"), std::runtime_error);
+}
+

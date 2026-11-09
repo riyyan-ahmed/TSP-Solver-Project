@@ -11,6 +11,19 @@
 namespace tsp {
 
 TspInstance TspParser::parseCoordinates(std::istream& input) {
+    // the distance formula depends on the EDGE_WEIGHT_TYPE of the file
+    EdgeWeightType weightType = EdgeWeightType::Euclidean;  // no type in the file
+
+    if (edgeWeightType == "EUC_2D") {
+        weightType = EdgeWeightType::Euc2d;
+    } else if (edgeWeightType == "ATT") {
+        weightType = EdgeWeightType::Att;
+    } else if (edgeWeightType == "GEO") {
+        weightType = EdgeWeightType::Geo;
+    } else if (!edgeWeightType.empty()) {
+        throw std::runtime_error("Unsupported EDGE_WEIGHT_TYPE: " + edgeWeightType);
+    }
+
     std::vector<int> ids(dimension);
     std::vector<std::pair<double, double>> points(dimension);
 
@@ -57,7 +70,8 @@ TspInstance TspParser::parseCoordinates(std::istream& input) {
         throw std::runtime_error("Error while reading coordinates");
     }
 
-    return TspInstance(name, std::move(cityIds), std::make_unique<CoordinatesGraph>(std::move(coordinates)));
+    return TspInstance(name, std::move(cityIds), std::make_unique<CoordinatesGraph>(std::move(coordinates), weightType));
+
 }
 
 }

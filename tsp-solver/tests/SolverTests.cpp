@@ -82,3 +82,14 @@ TEST(TrivialSolver, HandlesSingleCity) {
     TspInstance instance = parser.parse(input);
     EXPECT_EQ(TrivialSolver().solve(instance), Tour({0}));
 }
+
+TEST(ProvidedInstanceValues, Ulysses16OptimalTourHasLength6859) {
+    // optimal tour from TSPLIB, cities numbered from 1
+    const Tour optimal = {1, 14, 13, 12, 7, 6, 15, 5, 11, 9, 10, 16, 3, 2, 4, 8};
+    Tour tour;
+    for (std::size_t city : optimal) {
+        tour.push_back(city - 1);
+    }
+    EXPECT_DOUBLE_EQ(load("coord/ulysses16.tsp").getGraph().tourLength(tour), 6859.0);
+}
+
