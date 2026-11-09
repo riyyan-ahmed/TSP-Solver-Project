@@ -18,6 +18,8 @@ namespace tsp
     {
         std::vector<std::pair<double, double>> coordinates;
         EdgeWeightType weightType;
+        std::vector<std::pair<double, double>> radians; // (latitude, longitude) only filled for GEO
+
 
     public:
         /** Builds the graph from a non-empty list of coordinates. */

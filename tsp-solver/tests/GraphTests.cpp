@@ -125,4 +125,14 @@ TEST(CoordinatesGraph, AttRoundsUpWhenNintRoundsDown) {
     EXPECT_DOUBLE_EQ(graph.weight(0, 0), 0.0);
 }
 
+TEST(CoordinatesGraph, GeoUsesLatitudeAndLongitudeInDegreesAndMinutes) {
+    // first three cities of burma14
+    CoordinatesGraph graph({{16.47, 96.10}, {16.47, 94.44}, {20.09, 92.54}}, EdgeWeightType::Geo);
+    EXPECT_DOUBLE_EQ(graph.weight(0, 1), 153.0);
+    EXPECT_DOUBLE_EQ(graph.weight(0, 2), 510.0);  // 560 if the degrees were rounded instead of truncated
+    EXPECT_DOUBLE_EQ(graph.weight(1, 2), 422.0);
+    EXPECT_DOUBLE_EQ(graph.weight(1, 1), 0.0);
+}
+
+
 
