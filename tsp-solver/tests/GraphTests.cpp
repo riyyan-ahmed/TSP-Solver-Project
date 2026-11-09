@@ -117,3 +117,12 @@ TEST(CoordinatesGraph, DefaultTypeKeepsThePlainDistance) {
     EXPECT_NEAR(graph.weight(0, 1), 1.41421356, 1e-6);
 }
 
+TEST(CoordinatesGraph, AttRoundsUpWhenNintRoundsDown) {
+    CoordinatesGraph graph({{0, 0}, {10, 0}, {9, 3}, {4, 11}}, EdgeWeightType::Att);
+    EXPECT_DOUBLE_EQ(graph.weight(0, 1), 4.0);  
+    EXPECT_DOUBLE_EQ(graph.weight(0, 2), 3.0);  
+    EXPECT_DOUBLE_EQ(graph.weight(0, 3), 4.0);  
+    EXPECT_DOUBLE_EQ(graph.weight(0, 0), 0.0);
+}
+
+

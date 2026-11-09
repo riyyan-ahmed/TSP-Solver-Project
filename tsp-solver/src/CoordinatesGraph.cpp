@@ -41,7 +41,12 @@ namespace tsp
         case EdgeWeightType::Euc2d:
             return static_cast<int>(distance + 0.5); // TSPLIB nint, rounds to the nearest integer
         case EdgeWeightType::Att:
-            return distance;
+        {
+            // ATT is a pseudo Euclidean distance its rounded up when nint rounded down
+            const double r = std::sqrt((dx * dx + dy * dy) / 10.0);
+            const int t = static_cast<int>(r + 0.5);
+            return (t < r) ? t + 1 : t;
+        }
         case EdgeWeightType::Geo:
             return distance;
         case EdgeWeightType::Euclidean:
