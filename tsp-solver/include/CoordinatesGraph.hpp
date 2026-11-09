@@ -8,7 +8,7 @@ namespace tsp
     // How the distance between two cities is computed (EDGE_WEIGHT_TYPE of the file)
     enum class EdgeWeightType
     {
-        Euclidean, // Also used as a base-case when the file gives no type
+        Euclidean, // Also used by default when the file gives no type
         Euc2d,
         Att,
         Geo

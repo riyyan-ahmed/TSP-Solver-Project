@@ -104,3 +104,16 @@ TEST(CoordinatesGraph, CoincidentCitiesAreAtDistanceZero) {
     CoordinatesGraph graph({{2.5, 2.5}, {2.5, 2.5}});
     EXPECT_DOUBLE_EQ(graph.weight(0, 1), 0.0);
 }
+TEST(CoordinatesGraph, Euc2dRoundsToTheNearestInteger) {
+    CoordinatesGraph graph({{0, 0}, {3, 4}, {1, 1}, {2, 3}}, EdgeWeightType::Euc2d);
+    EXPECT_DOUBLE_EQ(graph.weight(0, 1), 5.0); 
+    EXPECT_DOUBLE_EQ(graph.weight(0, 2), 1.0);  
+    EXPECT_DOUBLE_EQ(graph.weight(0, 3), 4.0);  
+    EXPECT_DOUBLE_EQ(graph.weight(0, 0), 0.0);
+}
+
+TEST(CoordinatesGraph, DefaultTypeKeepsThePlainDistance) {
+    CoordinatesGraph graph({{0, 0}, {1, 1}});
+    EXPECT_NEAR(graph.weight(0, 1), 1.41421356, 1e-6);
+}
+

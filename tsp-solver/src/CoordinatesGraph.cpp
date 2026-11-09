@@ -39,7 +39,7 @@ namespace tsp
         switch (weightType)
         {
         case EdgeWeightType::Euc2d:
-            return distance;
+            return static_cast<int>(distance + 0.5); // TSPLIB nint, rounds to the nearest integer
         case EdgeWeightType::Att:
             return distance;
         case EdgeWeightType::Geo:
