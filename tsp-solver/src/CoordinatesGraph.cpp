@@ -53,7 +53,7 @@ namespace tsp
 
         const double distance = std::sqrt(dx * dx + dy * dy);
 
-        // each EDGE_WEIGHT_TYPE has its own formula but all use the plain distance for now
+        // each EDGE_WEIGHT_TYPE has its own TSPLIB formula
 
         switch (weightType)
         {
