@@ -59,3 +59,37 @@ TEST(Subset, HandlesTheFullSixtyFourBits) {
     EXPECT_TRUE(s.contains(63));
     EXPECT_EQ(s.index(), ~0ULL);
 }
+
+TEST(SubsetIterator, FollowsTheGosperSequenceOfTheTP) {
+    // n = 5 and k = 3, the ten bit strings listed in the TP
+    const std::vector<unsigned long long> expected = {
+        0b00111, 0b01011, 0b01101, 0b01110, 0b10011, 0b10101, 0b10110, 0b11001, 0b11010, 0b11100};
+    std::vector<unsigned long long> seen;
+    for (SubsetIterator it(5, 3); it != SubsetIterator::end(); ++it) {
+        seen.push_back((*it).index());
+    }
+    EXPECT_EQ(seen, expected);
+}
+
+TEST(SubsetIterator, CountsBinomialCoefficients) {
+    // C(10, 4) = 210 subsets of size 4 in a set of 10
+    std::size_t count = 0;
+    for (SubsetIterator it(10, 4); it != SubsetIterator::end(); ++it) {
+        count++;
+    }
+    EXPECT_EQ(count, 210u);
+}
+
+TEST(SubsetIterator, HandlesTheEmptyAndTheFullSubset) {
+    std::size_t empty = 0;
+    for (SubsetIterator it(6, 0); it != SubsetIterator::end(); ++it) {
+        empty++;
+    }
+    EXPECT_EQ(empty, 1u);
+
+    std::size_t full = 0;
+    for (SubsetIterator it(6, 6); it != SubsetIterator::end(); ++it) {
+        full++;
+    }
+    EXPECT_EQ(full, 1u);
+}
