@@ -168,3 +168,9 @@ TEST_F(Executable, SolvesWithNearestNeighbourTwoOptMethod) {
     ASSERT_EQ(runSolver(shellQuote(coordInstance) + " " + shellQuote(outPath.string()) + " -m nn-2opt"), 0);
     EXPECT_TRUE(tourIdsArePermutation(outPath, 52));
 }
+
+TEST_F(Executable, SolvesWithHeldKarpMethod) {
+    ASSERT_EQ(runSolver(shellQuote(instance) + " " + shellQuote(outPath.string()) + " -m held-karp"), 0);
+    EXPECT_TRUE(tourIdsArePermutation(outPath, 17));
+}
+

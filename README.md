@@ -19,7 +19,7 @@ bash
 ./build/TSPsolver <instance_path> <output_path> [-m <algorithm>]
 
 
-Algorithms: trivial (default), mst (tour from a minimum spanning tree), mst-2opt (the same tour improved by 2-opt), nn (nearest neighbour tour), nn-2opt (the same tour improved by 2-opt).
+Algorithms: trivial (default), held-karp (exact method, small instances only), mst (tour from a minimum spanning tree), mst-2opt (the same tour improved by 2-opt), nn (nearest neighbour tour), nn-2opt (the same tour improved by 2-opt).
 
 Example: ./build/TSPsolver TSP-instances/lower_diag/gr17.tsp gr17.tour
 
@@ -49,6 +49,9 @@ tsp-solver/
 | TspInstance | TspInstance.cpp | name, city ids and distance graph |
 | Graph, MatrixGraph, CoordinatesGraph | Graph.cpp, MatrixGraph.cpp, CoordinatesGraph.cpp | distances between cities |
 | Solver, TrivialSolver | Algorithms.hpp, Trivial.cpp | solving methods |
+| HeldKarpSolver | HeldKarpSolver.cpp | exact method (Held-Karp) |
+| Subset, SubsetIterator | Subset.cpp | subsets stored as bits |
+
 | ConstructAndImproveSolver | ConstructAndImproveSolver.cpp | builds a tour, then improves it |
 | TourConstructor, MstConstructor, MinimumSpanningTree, NearestNeighbourConstructor | MstConstructor.cpp, MinimumSpanningTree.cpp, NearestNeighbourConstructor.cpp | build a first tour |
 | TourImprover, TwoOpt | TwoOpt.cpp | improve an existing tour |

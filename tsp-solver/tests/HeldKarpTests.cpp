@@ -8,8 +8,14 @@
 #include "CoordinatesGraph.hpp"
 #include "HeldKarpSolver.hpp"
 #include "MatrixGraph.hpp"
+#include <string> 
+#include "TspParser.hpp" 
+
 
 using namespace tsp;
+#ifndef TSP_INSTANCES_DIR
+#error "TSP_INSTANCES_DIR must be defined by the build system"
+#endif
 
 namespace {
     TspInstance makeInstance(std::vector<std::pair<double, double>> points) {
@@ -67,3 +73,20 @@ TEST(HeldKarpSolver, MatchesBruteForceOnSmallInstances) {
         EXPECT_NEAR(instance.getGraph().tourLength(tour), bruteForceOptimum(instance.getGraph()), 1e-9);
     }
 }
+
+TEST(HeldKarpSolver, FindsTheKnownOptimaOfTheSmallInstances) {
+    // optimal tour lengths from TSPLIB, gr24 is left out because it needs 1.5 GB of memory
+    const std::pair<const char*, double> known[] = {
+        {"coord/burma14.tsp", 3323}, {"coord/ulysses16.tsp", 6859},
+        {"lower_diag/gr17.tsp", 2085}, {"lower_diag/gr21.tsp", 2707}};
+
+    for (const auto& [file, optimum] : known) {
+        SCOPED_TRACE(file);
+        TspParser parser;
+        TspInstance instance = parser.parse(std::string(TSP_INSTANCES_DIR) + "/" + file);
+        const Tour tour = HeldKarpSolver().solve(instance);
+        EXPECT_TRUE(isPermutation(tour, instance.size()));
+        EXPECT_DOUBLE_EQ(instance.getGraph().tourLength(tour), optimum);
+    }
+}
+
