@@ -174,3 +174,9 @@ TEST_F(Executable, SolvesWithHeldKarpMethod) {
     EXPECT_TRUE(tourIdsArePermutation(outPath, 17));
 }
 
+TEST_F(Executable, HeldKarpFailsOnLargeInstanceWithoutWritingOutput) {
+    const std::string coordInstance = std::string(TSP_INSTANCES_DIR) + "/coord/berlin52.tsp";
+    EXPECT_NE(runSolver(shellQuote(coordInstance) + " " + shellQuote(outPath.string()) + " -m held-karp"), 0);
+    EXPECT_FALSE(fs::exists(outPath));
+}
+

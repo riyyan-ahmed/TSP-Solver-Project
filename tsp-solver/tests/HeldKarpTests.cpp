@@ -9,6 +9,7 @@
 #include "HeldKarpSolver.hpp"
 #include "MatrixGraph.hpp"
 #include <string> 
+#include <stdexcept>
 #include "TspParser.hpp" 
 
 
@@ -90,3 +91,10 @@ TEST(HeldKarpSolver, FindsTheKnownOptimaOfTheSmallInstances) {
     }
 }
 
+TEST(HeldKarpSolver, RejectsTooManyCities) {
+    std::vector<std::pair<double, double>> points;
+    for (std::size_t i = 0; i <= HeldKarpSolver::maxCities; i++) {
+        points.emplace_back(i, 0);
+    }
+    EXPECT_THROW(HeldKarpSolver().solve(makeInstance(points)), std::invalid_argument);
+}

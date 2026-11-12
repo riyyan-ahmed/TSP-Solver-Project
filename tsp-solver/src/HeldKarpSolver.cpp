@@ -2,6 +2,8 @@
 #include <algorithm>
 #include <limits>
 #include <vector>
+#include <stdexcept>
+#include <string>
 #include "Subset.hpp"
 
 namespace tsp {
@@ -17,6 +19,10 @@ Tour HeldKarpSolver::solve(const TspInstance& instance) const {
             tour.push_back(i);
         }
         return tour;
+    }
+    
+    if (n > maxCities) {
+        throw std::invalid_argument("Held-Karp is limited to " + std::to_string(maxCities) + " cities");
     }
 
     // weight() is called a lot so the distances are copied once into a matrix
