@@ -3,7 +3,7 @@
 
 
 namespace {
-    /** Returns the unvisited vertex closest to current; strict < keeps the smallest index on ties. */
+    /** Returns the unvisited vertex closest to current, strict < keeps the smallest index on ties. */
     std::size_t nearestUnvisited(const tsp::Graph& graph, std::size_t current, const std::vector<bool>& visited) {
         const std::size_t n = graph.size();
         std::size_t nearest = n;

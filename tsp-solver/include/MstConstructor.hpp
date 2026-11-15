@@ -4,8 +4,7 @@
 
 namespace tsp {
     /**
-     * Visits the vertices in the depth-first order of a minimum spanning tree.
-     * On metric graphs the tour is at most twice as long as the optimal tour.
+     * Visit the vertices in the depth-first order of minimum spanning tree. As in metric graphs the tour is at most twice as long as the optimal tour.
      */
     class MstConstructor : public TourConstructor {
         public:

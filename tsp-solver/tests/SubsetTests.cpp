@@ -1,3 +1,4 @@
+// Partly edited by Claude (Claude Opus 5.5), 2026-11-15: the two iteration tests merged into one
 #include <gtest/gtest.h>
 #include <sstream>
 #include <stdexcept>
@@ -34,15 +35,16 @@ TEST(Subset, PrintsItsElements) {
 }
 
 TEST(Subset, IteratesOverItsElementsInOrder) {
-    Subset s(0, 10);
-    s.add(7);
+    // bit 63 is the last of the 64 bits
+    Subset s(0, 64);
+    s.add(63);
     s.add(1);
-    s.add(4);
+    s.add(32);
     std::vector<std::size_t> elements;
     for (std::size_t element : s) {
         elements.push_back(element);
     }
-    EXPECT_EQ(elements, std::vector<std::size_t>({1, 4, 7}));
+    EXPECT_EQ(elements, std::vector<std::size_t>({1, 32, 63}));
 }
 
 TEST(Subset, RejectsInvalidSizesAndElements) {

@@ -13,8 +13,7 @@ Tour MstConstructor::build(const Graph& graph) const {
     const MinimumSpanningTree tree(graph);
 
     // Depth-first walk with an explicit stack instead of recursion, so a tree shaped like a
-    // long path (thousands of levels) cannot overflow the call stack. A tree has no cycles,
-    // so every vertex is reached exactly once and no "visited" list is needed.
+    // long path (thousands of levels) cannot overflow the call stack
     Tour tour;
     tour.reserve(graph.size());
     std::vector<std::size_t> toVisit{MinimumSpanningTree::root};

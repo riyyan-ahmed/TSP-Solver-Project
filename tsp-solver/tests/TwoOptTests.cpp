@@ -1,35 +1,16 @@
+// Partly edited by Claude (Claude Opus 5.5), 2026-11-15: helpers from TestHelpers.hpp, removed IsDeterministic (the exact tours expected below already show it)
 #include <gtest/gtest.h>
 #include <algorithm>
 #include <numeric>
 #include <stdexcept>
-#include <string>
 #include "CoordinatesGraph.hpp"
-#include "MatrixGraph.hpp"
-#include "TspParser.hpp"
+#include "TestHelpers.hpp"
 #include "TwoOpt.hpp"
 
-#ifndef TSP_INSTANCES_DIR
-#error "TSP_INSTANCES_DIR must be defined by the build system"
-#endif
-
 using namespace tsp;
+using namespace helpers;
 
 namespace {
-    // Cities A, B, C, D = 0, 1, 2, 3; the three possible tours have length 14, 13 and 15
-    MatrixGraph fourCities() {
-        return MatrixGraph({{0, 2, 1, 5},
-                            {2, 0, 3, 6},
-                            {1, 3, 0, 4},
-                            {5, 6, 4, 0}});
-    }
-
-    bool isPermutation(Tour tour, std::size_t n) {
-        Tour expected(n);
-        std::iota(expected.begin(), expected.end(), 0);
-        std::sort(tour.begin(), tour.end());
-        return tour == expected;
-    }
-
     Tour identityTour(std::size_t n) {
         Tour tour(n);
         std::iota(tour.begin(), tour.end(), 0);
@@ -100,8 +81,7 @@ TEST(TwoOpt, ZeroPassesLeavesTheTourUnchanged) {
 }
 
 TEST(TwoOpt, LimitedPassesNeverMakeTheTourLonger) {
-    TspParser parser;
-    TspInstance instance = parser.parse(std::string(TSP_INSTANCES_DIR) + "/coord/berlin52.tsp");
+    TspInstance instance = load("coord/berlin52.tsp");
     const Graph& graph = instance.getGraph();
     const Tour start = identityTour(graph.size());
 
@@ -113,25 +93,10 @@ TEST(TwoOpt, LimitedPassesNeverMakeTheTourLonger) {
     EXPECT_LE(graph.tourLength(full), graph.tourLength(onePass));
 }
 
-TEST(TwoOpt, IsDeterministic) {
-    MatrixGraph graph = fourCities();
-    EXPECT_EQ(TwoOpt().improve(graph, {0, 2, 1, 3}), TwoOpt().improve(graph, {0, 2, 1, 3}));
-}
-
-namespace {
-    const char* const instanceFiles[] = {
-        "coord/att48.tsp", "coord/berlin52.tsp", "coord/burma14.tsp", "coord/ch130.tsp",
-        "coord/eil76.tsp", "coord/pr1002.tsp", "coord/pr299.tsp", "coord/pr76.tsp",
-        "coord/st70.tsp", "coord/ulysses16.tsp",
-        "lower_diag/dantzig42.tsp", "lower_diag/gr17.tsp", "lower_diag/gr21.tsp",
-        "lower_diag/gr24.tsp", "lower_diag/gr48.tsp"};
-}
-
 class TwoOptOnProvidedInstances : public ::testing::TestWithParam<const char*> {};
 
 TEST_P(TwoOptOnProvidedInstances, ImprovesTheTrivialTourUntilNoMoveIsLeft) {
-    TspParser parser;
-    TspInstance instance = parser.parse(std::string(TSP_INSTANCES_DIR) + "/" + GetParam());
+    TspInstance instance = load(GetParam());
     const Graph& graph = instance.getGraph();
     const Tour start = identityTour(graph.size());
 

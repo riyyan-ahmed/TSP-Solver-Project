@@ -1,3 +1,4 @@
+# Used from the Professor's template for CMake projects, with some modifications to suit the TSP solver project.
 cmake_minimum_required(VERSION 3.16)
 project(tsp_solver)
 
@@ -14,8 +15,9 @@ endif()
 # --- Compiler flags ---
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
-# Only applied to our targets: GoogleTest does not compile with -Werror
-set(WARNING_FLAGS -Wall -Wextra -Werror)
+# Only applied to our targets. No -Werror: a warning that only another compiler
+# gives (e.g. GCC on Linux) must not stop the build
+set(WARNING_FLAGS -Wall -Wextra)
 
 # --- Directories ---
 set(SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)

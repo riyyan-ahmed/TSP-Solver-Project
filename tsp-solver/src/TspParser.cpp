@@ -7,7 +7,7 @@
 // Generated with Claude (Claude Opus 5.5), 2026-09-25
 namespace {
     /** Removes spaces, tabs and line breaks at both ends of the text. */
-    std::string trim(const std::string &text) {
+    std::string trim(const std::string& text) {
         const auto first = text.find_first_not_of(" \t\r\n");
 
         if (first == std::string::npos) {
@@ -20,100 +20,97 @@ namespace {
 }
 
 
-namespace tsp
-{
-    TspInstance TspParser::parse(const std::string &filePath) {
-        std::ifstream input(filePath);
+namespace tsp {
 
-        if (!input.is_open()) {
-            throw std::runtime_error("Cannot open file: " + filePath);
-        }
+TspInstance TspParser::parse(const std::string& filePath) {
+    std::ifstream input(filePath);
 
-        return parse(input);
+    if (!input.is_open()) {
+        throw std::runtime_error("Cannot open file: " + filePath);
     }
 
+    return parse(input);
+}
 
-    TspInstance TspParser::parse(std::istream &input) {
-        // forget the header of a previously parsed file
-        *this = TspParser();
+TspInstance TspParser::parse(std::istream& input) {
+    // forget the header of a previously parsed file
+    *this = TspParser();
 
-        readHeader(input);
+    readHeader(input);
 
-        if (dataSection == "NODE_COORD_SECTION") {
-            return parseCoordinates(input);
-        }
-
-        if (dataSection == "EDGE_WEIGHT_SECTION") {
-            if (edgeWeightType != "EXPLICIT" || edgeWeightFormat != "LOWER_DIAG_ROW") {
-                throw std::runtime_error("Expected EXPLICIT weights in LOWER_DIAG_ROW format");
-            }
-
-            return parseLowerDiag(input);
-        }
-
-        throw std::runtime_error("Unsupported data section");
+    if (dataSection == "NODE_COORD_SECTION") {
+        return parseCoordinates(input);
     }
 
-
-    void TspParser::readHeader(std::istream &input)
-    {
-        std::string line;
-
-        while (std::getline(input, line))
-        {
-            line = trim(line);
-
-            if (line.empty()) {
-                continue;
-            }
-
-            if (line == "NODE_COORD_SECTION" || line == "EDGE_WEIGHT_SECTION") {
-                dataSection = line;
-                break;
-            }
-
-            const auto colon = line.find(':');
-
-            if (colon == std::string::npos) {
-                throw std::runtime_error("Invalid header line: " + line);
-            }
-
-            std::string key = trim(line.substr(0, colon));
-            std::string value = trim(line.substr(colon + 1));
-
-            if (key == "NAME") {
-                name = value;
-            } else if (key == "TYPE") {
-                type = value;
-            } else if (key == "DIMENSION") {
-                std::istringstream number(value);
-                std::string extra;
-
-                // extra catches values like "52abc"
-                if (!(number >> dimension) || dimension <= 0 || (number >> extra)) {
-                    throw std::runtime_error("DIMENSION must be a positive integer");
-                }
-            } else if (key == "EDGE_WEIGHT_TYPE") {
-                edgeWeightType = value;
-            } else if (key == "EDGE_WEIGHT_FORMAT") {
-                edgeWeightFormat = value;
-            }
+    if (dataSection == "EDGE_WEIGHT_SECTION") {
+        if (edgeWeightType != "EXPLICIT" || edgeWeightFormat != "LOWER_DIAG_ROW") {
+            throw std::runtime_error("Expected EXPLICIT weights in LOWER_DIAG_ROW format");
         }
 
-        if (name.empty()) {
-            throw std::runtime_error("Missing NAME");
+        return parseLowerDiag(input);
+    }
+
+    throw std::runtime_error("Unsupported data section");
+}
+
+void TspParser::readHeader(std::istream& input) {
+    std::string line;
+
+    while (std::getline(input, line)) {
+        line = trim(line);
+
+        if (line.empty()) {
+            continue;
         }
 
-        if (type != "TSP") {
-            throw std::runtime_error("Expected TYPE: TSP");
+        if (line == "NODE_COORD_SECTION" || line == "EDGE_WEIGHT_SECTION") {
+            dataSection = line;
+            break;
         }
 
-        if (dimension <= 0) {
-            throw std::runtime_error("Missing valid DIMENSION");
+        const auto colon = line.find(':');
+
+        if (colon == std::string::npos) {
+            throw std::runtime_error("Invalid header line: " + line);
         }
 
-        if (dataSection.empty()) {
-            throw std::runtime_error("Missing supported data section");
+        std::string key = trim(line.substr(0, colon));
+        std::string value = trim(line.substr(colon + 1));
+
+        if (key == "NAME") {
+            name = value;
+        } else if (key == "TYPE") {
+            type = value;
+        } else if (key == "DIMENSION") {
+            std::istringstream number(value);
+            std::string extra;
+
+            // extra catches values like "52abc"
+            if (!(number >> dimension) || dimension <= 0 || (number >> extra)) {
+                throw std::runtime_error("DIMENSION must be a positive integer");
+            }
+        } else if (key == "EDGE_WEIGHT_TYPE") {
+            edgeWeightType = value;
+        } else if (key == "EDGE_WEIGHT_FORMAT") {
+            edgeWeightFormat = value;
         }
     }
+
+    if (name.empty()) {
+        throw std::runtime_error("Missing NAME");
+    }
+
+    if (type != "TSP") {
+        throw std::runtime_error("Expected TYPE: TSP");
+    }
+
+    if (dimension <= 0) {
+        throw std::runtime_error("Missing valid DIMENSION");
+    }
+
+    if (dataSection.empty()) {
+        throw std::runtime_error("Missing supported data section");
+    }
+}
+
 }

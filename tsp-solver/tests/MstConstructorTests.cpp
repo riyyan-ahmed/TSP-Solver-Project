@@ -1,39 +1,16 @@
+// Partly edited by Claude (Claude Opus 5.5), 2026-11-13: helpers from TestHelpers.hpp, removed IsDeterministic and IsImprovedByTwoOptToTheOptimum (repeated in TwoOptTests.cpp)
 #include <gtest/gtest.h>
-#include <algorithm>
-#include <memory>
-#include <numeric>
 #include <stdexcept>
 #include <string>
-#include "ConstructAndImproveSolver.hpp"
+#include <vector>
 #include "CoordinatesGraph.hpp"
-#include "MatrixGraph.hpp"
 #include "MinimumSpanningTree.hpp"
 #include "MstConstructor.hpp"
-#include "TspParser.hpp"
+#include "TestHelpers.hpp"
 #include "TwoOpt.hpp"
 
-#ifndef TSP_INSTANCES_DIR
-#error "TSP_INSTANCES_DIR must be defined by the build system"
-#endif
-
 using namespace tsp;
-
-namespace {
-    // Cities A, B, C, D = 0, 1, 2, 3 (same example as TwoOptTests.cpp): the best tour has length 13
-    MatrixGraph fourCities() {
-        return MatrixGraph({{0, 2, 1, 5},
-                            {2, 0, 3, 6},
-                            {1, 3, 0, 4},
-                            {5, 6, 4, 0}});
-    }
-
-    bool isPermutation(Tour tour, std::size_t n) {
-        Tour expected(n);
-        std::iota(expected.begin(), expected.end(), 0);
-        std::sort(tour.begin(), tour.end());
-        return tour == expected;
-    }
-}
+using namespace helpers;
 
 // ---------- MinimumSpanningTree ----------
 
@@ -102,35 +79,13 @@ TEST(MstConstructor, HandlesOneAndTwoCities) {
     EXPECT_EQ(MstConstructor().build(MatrixGraph({{0, 7}, {7, 0}})), Tour({0, 1}));
 }
 
-TEST(MstConstructor, IsDeterministic) {
-    MatrixGraph graph = fourCities();
-    EXPECT_EQ(MstConstructor().build(graph), MstConstructor().build(graph));
-}
-
-TEST(MstConstructor, IsImprovedByTwoOptToTheOptimum) {
-    TspInstance instance("four", {1, 2, 3, 4}, std::make_unique<MatrixGraph>(fourCities()));
-    ConstructAndImproveSolver solver(std::make_unique<MstConstructor>(), std::make_unique<TwoOpt>());
-
-    EXPECT_DOUBLE_EQ(instance.getGraph().tourLength(solver.solve(instance)), 13.0);
-}
-
 // ---------- All provided instances ----------
-
-namespace {
-    const char* const instanceFiles[] = {
-        "coord/att48.tsp", "coord/berlin52.tsp", "coord/burma14.tsp", "coord/ch130.tsp",
-        "coord/eil76.tsp", "coord/pr1002.tsp", "coord/pr299.tsp", "coord/pr76.tsp",
-        "coord/st70.tsp", "coord/ulysses16.tsp",
-        "lower_diag/dantzig42.tsp", "lower_diag/gr17.tsp", "lower_diag/gr21.tsp",
-        "lower_diag/gr24.tsp", "lower_diag/gr48.tsp"};
-}
 
 class MstOnProvidedInstances : public ::testing::TestWithParam<const char*> {};
 
 TEST_P(MstOnProvidedInstances, BuildsAValidTourWithinTheBounds) {
     const std::string file = GetParam();
-    TspParser parser;
-    TspInstance instance = parser.parse(std::string(TSP_INSTANCES_DIR) + "/" + file);
+    TspInstance instance = load(file);
     const Graph& graph = instance.getGraph();
 
     const MinimumSpanningTree tree(graph);

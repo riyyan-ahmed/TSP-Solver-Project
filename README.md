@@ -7,7 +7,7 @@ Riyyan Ahmed  & Salaheddine Moustafid
 
 ## Build
 
-bash
+bash :
 bash build-TSPsolver.sh
 
 
@@ -51,7 +51,6 @@ tsp-solver/
 | Solver, TrivialSolver | Algorithms.hpp, Trivial.cpp | solving methods |
 | HeldKarpSolver | HeldKarpSolver.cpp | exact method (Held-Karp) |
 | Subset, SubsetIterator | Subset.cpp | subsets stored as bits |
-
 | ConstructAndImproveSolver | ConstructAndImproveSolver.cpp | builds a tour, then improves it |
 | TourConstructor, MstConstructor, MinimumSpanningTree, NearestNeighbourConstructor | MstConstructor.cpp, MinimumSpanningTree.cpp, NearestNeighbourConstructor.cpp | build a first tour |
 | TourImprover, TwoOpt | TwoOpt.cpp | improve an existing tour |

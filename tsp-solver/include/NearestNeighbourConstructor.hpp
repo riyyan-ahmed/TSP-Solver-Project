@@ -5,8 +5,7 @@
 
 namespace tsp {
     /**
-     * Starts at a fixed vertex and always moves to the closest vertex not visited yet, in O(n^2).
-     * Unlike MstConstructor, it gives no guarantee on the length of the tour.
+     * Starts at a fixed vertex and always moves to the closest vertex not visited yet
      */
     class NearestNeighbourConstructor : public TourConstructor {
         public:

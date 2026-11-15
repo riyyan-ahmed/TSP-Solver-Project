@@ -3,16 +3,14 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include "Algorithms.hpp"
-#include "ConstructAndImproveSolver.hpp"
-#include "MstConstructor.hpp"
-#include "NearestNeighbourConstructor.hpp"
-#include "TourWriter.hpp"
-#include "TspParser.hpp"
 #include "TwoOpt.hpp"
+#include "TspParser.hpp"
+#include "Algorithms.hpp"
+#include "TourWriter.hpp"
+#include "MstConstructor.hpp"
 #include "HeldKarpSolver.hpp"
-
-
+#include "ConstructAndImproveSolver.hpp"
+#include "NearestNeighbourConstructor.hpp"
 
 
 namespace {
@@ -26,6 +24,7 @@ namespace {
         if (algorithm == "trivial") {
             return std::make_unique<tsp::TrivialSolver>();
         }
+
         if (algorithm == "held-karp") {
             return std::make_unique<tsp::HeldKarpSolver>();
         }
@@ -33,17 +32,19 @@ namespace {
         if (algorithm == "mst") {
             return std::make_unique<tsp::ConstructAndImproveSolver>(std::make_unique<tsp::MstConstructor>());
         }
+
         if (algorithm == "mst-2opt") {
-            return std::make_unique<tsp::ConstructAndImproveSolver>(std::make_unique<tsp::MstConstructor>(),
-                                                                    std::make_unique<tsp::TwoOpt>());
+            return std::make_unique<tsp::ConstructAndImproveSolver>(std::make_unique<tsp::MstConstructor>(), std::make_unique<tsp::TwoOpt>());
         }
+
         if (algorithm == "nn") {
             return std::make_unique<tsp::ConstructAndImproveSolver>(std::make_unique<tsp::NearestNeighbourConstructor>());
         }
+
         if (algorithm == "nn-2opt") {
-            return std::make_unique<tsp::ConstructAndImproveSolver>(std::make_unique<tsp::NearestNeighbourConstructor>(),
-                                                                    std::make_unique<tsp::TwoOpt>());
+            return std::make_unique<tsp::ConstructAndImproveSolver>(std::make_unique<tsp::NearestNeighbourConstructor>(), std::make_unique<tsp::TwoOpt>());
         }
+
         return nullptr;
     }
 }
@@ -75,13 +76,15 @@ int main(int argc, char* argv[]) {
     if (paths.size() != 2) {
         std::cerr << "Error: expected an instance path and an output path\n";
         printUsage(argv[0]);
+
         return 1;
     }
 
     std::unique_ptr<tsp::Solver> solver = makeSolver(algorithm);
     if (!solver) {
-        std::cerr << "Error: unknown or not yet implemented algorithm '" << algorithm << "'.\n";
+        std::cerr << "Error: unknown algorithm '" << algorithm << "'.\n";
         printUsage(argv[0]);
+        
         return 1;
     }
 

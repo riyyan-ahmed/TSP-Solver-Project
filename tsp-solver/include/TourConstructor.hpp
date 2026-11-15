@@ -3,7 +3,7 @@
 
 
 namespace tsp {
-    /** Builds a first tour of a graph (e.g. from a minimum spanning tree or by nearest neighbour). */
+    /** Builds a first tour of a graph (from a minimum spanning tree or by nearest neighbour) */
     class TourConstructor {
         public:
             virtual ~TourConstructor() = default;

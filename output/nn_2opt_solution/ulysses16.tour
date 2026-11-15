@@ -1,0 +1,22 @@
+NAME : ulysses16.tour
+TYPE : TOUR
+DIMENSION : 16
+TOUR_SECTION
+1
+8
+4
+2
+3
+10
+9
+11
+5
+15
+6
+7
+12
+14
+13
+16
+-1
+EOF

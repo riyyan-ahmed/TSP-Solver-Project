@@ -6,10 +6,6 @@
 #include <string>
 #include "TspParser.hpp"
 
-#ifndef TSP_INSTANCES_DIR
-#error "TSP_INSTANCES_DIR must be defined by the build system"
-#endif
-
 using namespace tsp;
 
 namespace {
@@ -75,9 +71,17 @@ TEST(Parser, IgnoresCommentsAndUnknownHeaderEntries) {
     EXPECT_EQ(parseText(text).size(), 1u);
 }
 
+TEST(Parser, IgnoresBlankLinesAndIndentationInHeaderAndData) {
+    const std::string text = "\n  NAME: n\n\n TYPE:TSP\nDIMENSION :2\n  NODE_COORD_SECTION  \n\n"
+                             "1 0 0\n\n2 3 4\n\nEOF\n";
+    EXPECT_DOUBLE_EQ(parseText(text).getGraph().weight(0, 1), 5.0);
+}
+
 TEST(Parser, AcceptsMissingFinalEof) {
-    std::string text = "NAME: n\nTYPE: TSP\nDIMENSION: 1\nNODE_COORD_SECTION\n1 0 0\n";
-    EXPECT_EQ(parseText(text).size(), 1u);
+    EXPECT_EQ(parseText("NAME: n\nTYPE: TSP\nDIMENSION: 1\nNODE_COORD_SECTION\n1 0 0\n").size(), 1u);
+    EXPECT_DOUBLE_EQ(parseText("NAME: n\nTYPE: TSP\nDIMENSION: 2\nEDGE_WEIGHT_TYPE: EXPLICIT\n"
+                               "EDGE_WEIGHT_FORMAT: LOWER_DIAG_ROW\nEDGE_WEIGHT_SECTION\n0\n4 0\n")
+                         .getGraph().weight(0, 1), 4.0);
 }
 
 TEST(Parser, AcceptsScientificNotationAndNegativeCoordinates) {
@@ -94,11 +98,43 @@ TEST(Parser, StoresCoordinatesByIdWhenLinesAreShuffled) {
     EXPECT_DOUBLE_EQ(instance.getGraph().weight(0, 2), 10.0);
 }
 
+TEST(Parser, AcceptsIdsStartingAtZeroLikeTheInstanceGenerator) {
+    // ids from 0 like the files of instance_generator.py, with the lines shuffled
+    std::string text = "NAME : rnd-0.tsp\nTYPE : TSP\nDIMENSION : 3\nEDGE_WEIGHT_TYPE: EUC_2D\n"
+                       "NODE_COORD_SECTION\n2 6.0 8.0\n0 0.0 0.0\n1 3.0 4.0\nEOF";
+    TspInstance instance = parseText(text);
+    EXPECT_EQ(instance.size(), 3u);
+    EXPECT_EQ(instance.getCityId(0), 0);
+    EXPECT_EQ(instance.getCityId(2), 2);
+    EXPECT_DOUBLE_EQ(instance.getGraph().weight(0, 1), 5.0);
+    EXPECT_DOUBLE_EQ(instance.getGraph().weight(0, 2), 10.0);
+}
+
+TEST(Parser, AcceptsMatrixWrappedOverArbitraryLines) {
+    // TSPLIB files do not guarantee one matrix row per line
+    const std::string text = "NAME: n\nTYPE: TSP\nDIMENSION: 3\nEDGE_WEIGHT_TYPE: EXPLICIT\n"
+                             "EDGE_WEIGHT_FORMAT: LOWER_DIAG_ROW\nEDGE_WEIGHT_SECTION\n"
+                             "0 2\n0 3 4\n0\nEOF\n";
+    TspInstance instance = parseText(text);
+    EXPECT_DOUBLE_EQ(instance.getGraph().weight(0, 1), 2.0);
+    EXPECT_DOUBLE_EQ(instance.getGraph().weight(2, 0), 3.0);
+    EXPECT_DOUBLE_EQ(instance.getGraph().weight(2, 1), 4.0);
+}
+
 TEST(Parser, SkipsDisplayDataSectionAfterMatrix) {
     std::string text = "NAME: n\nTYPE: TSP\nDIMENSION: 2\nEDGE_WEIGHT_TYPE: EXPLICIT\n"
                        "EDGE_WEIGHT_FORMAT: LOWER_DIAG_ROW\nEDGE_WEIGHT_SECTION\n0\n7 0\n"
                        "DISPLAY_DATA_SECTION\n1 1.0 2.0\n2 3.0 4.0\nEOF\n";
     EXPECT_DOUBLE_EQ(parseText(text).getGraph().weight(0, 1), 7.0);
+}
+
+TEST(Parser, UsesTheEdgeWeightTypeOfTheFile) {
+    // same two cities, a different distance for each type
+    const std::string head = "NAME: n\nTYPE: TSP\nDIMENSION: 2\nEDGE_WEIGHT_TYPE: ";
+    const std::string points = "NODE_COORD_SECTION\n1 0 0\n2 10 0\nEOF\n";
+    EXPECT_DOUBLE_EQ(parseText(head + "EUC_2D\n" + points).getGraph().weight(0, 1), 10.0);
+    EXPECT_DOUBLE_EQ(parseText(head + "ATT\n" + points).getGraph().weight(0, 1), 4.0);
+    EXPECT_DOUBLE_EQ(parseText(head + "GEO\n" + points).getGraph().weight(0, 1), 1114.0);
 }
 
 TEST(Parser, ParserCanBeReusedAcrossInstances) {
@@ -114,17 +150,13 @@ TEST(Parser, RejectsMissingFile) {
     EXPECT_THROW(parser.parse("does/not/exist.tsp"), std::runtime_error);
 }
 
-TEST(Parser, RejectsEmptyInput) {
+TEST(Parser, RejectsInvalidHeader) {
+    // empty file, no NAME, wrong TYPE, line without colon, no data section
     EXPECT_THROW(parseText(""), std::runtime_error);
-}
-
-TEST(Parser, RejectsMissingName) {
     EXPECT_THROW(parseText("TYPE: TSP\nDIMENSION: 1\nNODE_COORD_SECTION\n1 0 0\n"), std::runtime_error);
-}
-
-TEST(Parser, RejectsWrongType) {
-    EXPECT_THROW(parseText("NAME: n\nTYPE: ATSP\nDIMENSION: 1\nNODE_COORD_SECTION\n1 0 0\n"),
-                 std::runtime_error);
+    EXPECT_THROW(parseText("NAME: n\nTYPE: ATSP\nDIMENSION: 1\nNODE_COORD_SECTION\n1 0 0\n"), std::runtime_error);
+    EXPECT_THROW(parseText("NAME: n\nGARBAGE\nTYPE: TSP\n"), std::runtime_error);
+    EXPECT_THROW(parseText("NAME: n\nTYPE: TSP\nDIMENSION: 1\n"), std::runtime_error);
 }
 
 TEST(Parser, RejectsMissingOrInvalidDimension) {
@@ -135,21 +167,26 @@ TEST(Parser, RejectsMissingOrInvalidDimension) {
     EXPECT_THROW(parseText("NAME: n\nTYPE: TSP\nDIMENSION: 3 4\nNODE_COORD_SECTION\n"), std::runtime_error);
 }
 
-TEST(Parser, RejectsHeaderLineWithoutColon) {
-    EXPECT_THROW(parseText("NAME: n\nGARBAGE\nTYPE: TSP\n"), std::runtime_error);
+TEST(Parser, RejectsUnsupportedFormats) {
+    // FULL_MATRIX, matrix without EDGE_WEIGHT_FORMAT, EUC_3D coordinates
+    EXPECT_THROW(parseText("NAME: n\nTYPE: TSP\nDIMENSION: 2\nEDGE_WEIGHT_TYPE: EXPLICIT\n"
+                           "EDGE_WEIGHT_FORMAT: FULL_MATRIX\nEDGE_WEIGHT_SECTION\n0 1\n1 0\nEOF\n"),
+                 std::runtime_error);
+    EXPECT_THROW(parseText("NAME: n\nTYPE: TSP\nDIMENSION: 2\nEDGE_WEIGHT_SECTION\n0\n1 0\nEOF\n"),
+                 std::runtime_error);
+    EXPECT_THROW(parseText("NAME: n\nTYPE: TSP\nDIMENSION: 1\nEDGE_WEIGHT_TYPE: EUC_3D\n"
+                           "NODE_COORD_SECTION\n1 0 0\nEOF\n"), std::runtime_error);
 }
 
-TEST(Parser, RejectsMissingDataSection) {
-    EXPECT_THROW(parseText("NAME: n\nTYPE: TSP\nDIMENSION: 1\n"), std::runtime_error);
-}
-
-TEST(Parser, RejectsTruncatedCoordinates) {
+TEST(Parser, RejectsInvalidCoordinateLines) {
+    // fewer lines than DIMENSION, more lines than DIMENSION, not a number, data after EOF
     EXPECT_THROW(parseText("NAME: n\nTYPE: TSP\nDIMENSION: 3\nNODE_COORD_SECTION\n1 0 0\n2 1 1\nEOF\n"),
                  std::runtime_error);
-}
-
-TEST(Parser, RejectsNonNumericCoordinate) {
+    EXPECT_THROW(parseText("NAME: n\nTYPE: TSP\nDIMENSION: 1\nNODE_COORD_SECTION\n1 0 0\n2 1 1\nEOF\n"),
+                 std::runtime_error);
     EXPECT_THROW(parseText("NAME: n\nTYPE: TSP\nDIMENSION: 1\nNODE_COORD_SECTION\n1 abc 0\n"),
+                 std::runtime_error);
+    EXPECT_THROW(parseText("NAME: n\nTYPE: TSP\nDIMENSION: 1\nNODE_COORD_SECTION\n1 0 0\nEOF\nmore\n"),
                  std::runtime_error);
 }
 
@@ -164,47 +201,15 @@ TEST(Parser, RejectsOutOfRangeAndDuplicateCityIds) {
                  std::runtime_error);
 }
 
-TEST(Parser, AcceptsIdsStartingAtZeroLikeTheInstanceGenerator) {
-    // same layout as the files written by instance_generator.py
-    std::string text = "NAME : rnd-0.tsp\nTYPE : TSP\nDIMENSION : 3\nEDGE_WEIGHT_TYPE: EUC_2D\n"
-                       "NODE_COORD_SECTION\n0 0.0 0.0\n1 3.0 4.0\n2 6.0 8.0\nEOF";
-    TspInstance instance = parseText(text);
-    EXPECT_EQ(instance.size(), 3u);
-    EXPECT_EQ(instance.getCityId(0), 0);
-    EXPECT_EQ(instance.getCityId(2), 2);
-    EXPECT_DOUBLE_EQ(instance.getGraph().weight(0, 1), 5.0);
-    EXPECT_DOUBLE_EQ(instance.getGraph().weight(0, 2), 10.0);
-}
-
-TEST(Parser, StoresZeroBasedIdsByIdWhenLinesAreShuffled) {
-    std::string text = "NAME: n\nTYPE: TSP\nDIMENSION: 3\nNODE_COORD_SECTION\n"
-                       "2 6 8\n0 0 0\n1 3 4\nEOF\n";
-    TspInstance instance = parseText(text);
-    EXPECT_EQ(instance.getCityId(0), 0);
-    EXPECT_DOUBLE_EQ(instance.getGraph().weight(0, 1), 5.0);
-    EXPECT_DOUBLE_EQ(instance.getGraph().weight(0, 2), 10.0);
-}
-
-TEST(Parser, RejectsExtraCoordinateLines) {
-    EXPECT_THROW(parseText("NAME: n\nTYPE: TSP\nDIMENSION: 1\nNODE_COORD_SECTION\n1 0 0\n2 1 1\nEOF\n"),
-                 std::runtime_error);
-}
-
-TEST(Parser, RejectsMatrixWithWrongFormat) {
-    EXPECT_THROW(parseText("NAME: n\nTYPE: TSP\nDIMENSION: 2\nEDGE_WEIGHT_TYPE: EXPLICIT\n"
-                           "EDGE_WEIGHT_FORMAT: FULL_MATRIX\nEDGE_WEIGHT_SECTION\n0 1\n1 0\nEOF\n"),
-                 std::runtime_error);
-    EXPECT_THROW(parseText("NAME: n\nTYPE: TSP\nDIMENSION: 2\nEDGE_WEIGHT_SECTION\n0\n1 0\nEOF\n"),
-                 std::runtime_error);
-}
-
 TEST(Parser, RejectsInvalidMatrixValues) {
     const std::string head = "NAME: n\nTYPE: TSP\nDIMENSION: 2\nEDGE_WEIGHT_TYPE: EXPLICIT\n"
                              "EDGE_WEIGHT_FORMAT: LOWER_DIAG_ROW\nEDGE_WEIGHT_SECTION\n";
     EXPECT_THROW(parseText(head + "0\n-4 0\nEOF\n"), std::runtime_error);   // negative
     EXPECT_THROW(parseText(head + "3\n4 0\nEOF\n"), std::runtime_error);    // non-zero diagonal
     EXPECT_THROW(parseText(head + "0\n4\n"), std::runtime_error);           // truncated
+    EXPECT_THROW(parseText(head + "0\n4\nEOF\n"), std::runtime_error);      // EOF before the end of the matrix
     EXPECT_THROW(parseText(head + "0\nx 0\nEOF\n"), std::runtime_error);    // non numeric
+    EXPECT_THROW(parseText(head + "0\n1.5 0\nEOF\n"), std::runtime_error);  // not an integer
 }
 
 TEST(Parser, RejectsTrailingDataAfterMatrix) {
@@ -213,67 +218,3 @@ TEST(Parser, RejectsTrailingDataAfterMatrix) {
     EXPECT_THROW(parseText(head + "9\nEOF\n"), std::runtime_error);
     EXPECT_THROW(parseText(head + "EOF\n9\n"), std::runtime_error);
 }
-
-TEST(Parser, AcceptsMatrixWithoutFinalEof) {
-    const std::string text = "NAME: n\nTYPE: TSP\nDIMENSION: 2\nEDGE_WEIGHT_TYPE: EXPLICIT\n"
-                             "EDGE_WEIGHT_FORMAT: LOWER_DIAG_ROW\nEDGE_WEIGHT_SECTION\n0\n4 0\n";
-    EXPECT_DOUBLE_EQ(parseText(text).getGraph().weight(0, 1), 4.0);
-}
-
-TEST(Parser, AcceptsMatrixWrappedOverArbitraryLines) {
-    // TSPLIB files do not guarantee one matrix row per line
-    const std::string text = "NAME: n\nTYPE: TSP\nDIMENSION: 3\nEDGE_WEIGHT_TYPE: EXPLICIT\n"
-                             "EDGE_WEIGHT_FORMAT: LOWER_DIAG_ROW\nEDGE_WEIGHT_SECTION\n"
-                             "0 2\n0 3 4\n0\nEOF\n";
-    TspInstance instance = parseText(text);
-    EXPECT_DOUBLE_EQ(instance.getGraph().weight(0, 1), 2.0);
-    EXPECT_DOUBLE_EQ(instance.getGraph().weight(2, 0), 3.0);
-    EXPECT_DOUBLE_EQ(instance.getGraph().weight(2, 1), 4.0);
-}
-
-TEST(Parser, IgnoresBlankLinesAndIndentationInHeaderAndData) {
-    const std::string text = "\n  NAME: n\n\n TYPE:TSP\nDIMENSION :2\n  NODE_COORD_SECTION  \n\n"
-                             "1 0 0\n\n2 3 4\n\nEOF\n";
-    EXPECT_DOUBLE_EQ(parseText(text).getGraph().weight(0, 1), 5.0);
-}
-
-TEST(Parser, RejectsUnexpectedDataAfterCoordinates) {
-    EXPECT_THROW(parseText("NAME: n\nTYPE: TSP\nDIMENSION: 1\nNODE_COORD_SECTION\n1 0 0\nEOF\nmore\n"),
-                 std::runtime_error);
-}
-
-TEST(Parser, RejectsMatrixShorterThanDimension) {
-    EXPECT_THROW(parseText("NAME: n\nTYPE: TSP\nDIMENSION: 3\nEDGE_WEIGHT_TYPE: EXPLICIT\n"
-                           "EDGE_WEIGHT_FORMAT: LOWER_DIAG_ROW\nEDGE_WEIGHT_SECTION\n0\n1 0\nEOF\n"),
-                 std::runtime_error);
-}
-
-TEST(Parser, RejectsNonIntegerMatrixWeight) {
-    EXPECT_THROW(parseText("NAME: n\nTYPE: TSP\nDIMENSION: 2\nEDGE_WEIGHT_TYPE: EXPLICIT\n"
-                           "EDGE_WEIGHT_FORMAT: LOWER_DIAG_ROW\nEDGE_WEIGHT_SECTION\n0\n1.5 0\nEOF\n"),
-                 std::runtime_error);
-}
-
-TEST(Parser, ParsesEveryProvidedInstanceWithItsDeclaredDimension) {
-    // dimension appears in the file name for the matrix instances
-    const std::string dir = std::string(TSP_INSTANCES_DIR) + "/lower_diag/";
-    TspParser parser;
-    EXPECT_EQ(parser.parse(dir + "gr21.tsp").size(), 21u);
-    EXPECT_EQ(parser.parse(dir + "gr24.tsp").size(), 24u);
-    EXPECT_EQ(parser.parse(dir + "gr48.tsp").size(), 48u);
-}
-
-TEST(Parser, UsesTheEdgeWeightTypeOfTheFile) {
-    // same two cities, a different distance for each type
-    const std::string head = "NAME: n\nTYPE: TSP\nDIMENSION: 2\nEDGE_WEIGHT_TYPE: ";
-    const std::string points = "NODE_COORD_SECTION\n1 0 0\n2 10 0\nEOF\n";
-    EXPECT_DOUBLE_EQ(parseText(head + "EUC_2D\n" + points).getGraph().weight(0, 1), 10.0);
-    EXPECT_DOUBLE_EQ(parseText(head + "ATT\n" + points).getGraph().weight(0, 1), 4.0);
-    EXPECT_DOUBLE_EQ(parseText(head + "GEO\n" + points).getGraph().weight(0, 1), 1114.0);
-}
-
-TEST(Parser, RejectsUnsupportedEdgeWeightTypeForCoordinates) {
-    EXPECT_THROW(parseText("NAME: n\nTYPE: TSP\nDIMENSION: 1\nEDGE_WEIGHT_TYPE: EUC_3D\n"
-                           "NODE_COORD_SECTION\n1 0 0\nEOF\n"), std::runtime_error);
-}
-

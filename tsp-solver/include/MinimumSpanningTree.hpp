@@ -5,7 +5,7 @@
 
 
 namespace tsp {
-    /** Minimum spanning tree of a complete graph, computed with Prim's algorithm and rooted at vertex 0. */
+    /** Minimum spanning tree of a complete graph, computed using Prim's algorithm and rooted at vertex 0 */
     class MinimumSpanningTree {
         std::vector<std::vector<std::size_t>> children;
         double totalWeight = 0.0;
@@ -14,7 +14,7 @@ namespace tsp {
             /** Vertex the tree grows from. */
             static constexpr std::size_t root = 0;
 
-            /** Builds the tree in O(n^2), which suits complete graphs; ties go to the smallest vertex index. */
+            /** Builds the tree in O(n^2), which suits complete graphs, also here ties go to the smallest vertex index */
             explicit MinimumSpanningTree(const Graph& graph);
 
             /** Returns the number of vertices. */

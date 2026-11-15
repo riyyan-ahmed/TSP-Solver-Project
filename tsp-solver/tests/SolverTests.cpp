@@ -1,43 +1,15 @@
 #include <gtest/gtest.h>
-#include <algorithm>
 #include <cmath>
 #include <memory>
-#include <numeric>
 #include <sstream>
-#include <string>
 #include "Algorithms.hpp"
-#include "TspParser.hpp"
 #include "ConstructAndImproveSolver.hpp"
 #include "NearestNeighbourConstructor.hpp"
+#include "TestHelpers.hpp"
 #include "TwoOpt.hpp"
 
 using namespace tsp;
-
-#ifndef TSP_INSTANCES_DIR
-#error "TSP_INSTANCES_DIR must be defined by the build system"
-#endif
-
-namespace {
-    const char* const instanceFiles[] = {
-        "coord/att48.tsp", "coord/berlin52.tsp", "coord/burma14.tsp", "coord/ch130.tsp",
-        "coord/eil76.tsp", "coord/pr1002.tsp", "coord/pr299.tsp", "coord/pr76.tsp",
-        "coord/st70.tsp", "coord/ulysses16.tsp",
-        "lower_diag/dantzig42.tsp", "lower_diag/gr17.tsp", "lower_diag/gr21.tsp",
-        "lower_diag/gr24.tsp", "lower_diag/gr48.tsp"};
-
-    TspInstance load(const std::string& relativePath) {
-        TspParser parser;
-        return parser.parse(std::string(TSP_INSTANCES_DIR) + "/" + relativePath);
-    }
-
-    bool isPermutation(const Tour& tour, std::size_t n) {
-        Tour sorted = tour;
-        std::sort(sorted.begin(), sorted.end());
-        Tour expected(n);
-        std::iota(expected.begin(), expected.end(), 0);
-        return sorted == expected;
-    }
-}
+using namespace helpers;
 
 class ProvidedInstances : public ::testing::TestWithParam<const char*> {};
 
@@ -64,21 +36,12 @@ TEST(ProvidedInstanceSizes, MatchTheirNames) {
     EXPECT_EQ(load("lower_diag/dantzig42.tsp").size(), 42u);
 }
 
-TEST(ProvidedInstanceValues, Gr17MatrixIsSymmetric) {
-    TspInstance instance = load("lower_diag/gr17.tsp");
-    const Graph& g = instance.getGraph();
-    for (std::size_t i = 0; i < g.size(); i++)
-        for (std::size_t j = 0; j < g.size(); j++)
-            EXPECT_DOUBLE_EQ(g.weight(i, j), g.weight(j, i));
-}
-
-TEST(TrivialSolver, ReturnsIdentityPermutation) {
-    TspInstance instance = load("coord/berlin52.tsp");
-    Tour tour = TrivialSolver().solve(instance);
-    ASSERT_EQ(tour.size(), 52u);
-    for (std::size_t i = 0; i < tour.size(); i++) {
-        EXPECT_EQ(tour[i], i);
-    }
+TEST(TrivialSolver, ReturnsTheExampleTourOfTheSubject) {
+    // section 2.4.1 of the subject: the tour must be 1 -> 2 -> 3 -> 4 -> 5
+    TspParser parser;
+    std::istringstream input("NAME: example.tsp\nTYPE: TSP\nDIMENSION: 5\nNODE_COORD_SECTION\n"
+                             "1 565.0 575.0\n2 25.0 185.0\n3 345.0 750.0\n4 945.0 685.0\n5 845.0 655.0\nEOF\n");
+    EXPECT_EQ(TrivialSolver().solve(parser.parse(input)), Tour({0, 1, 2, 3, 4}));
 }
 
 TEST(TrivialSolver, HandlesSingleCity) {

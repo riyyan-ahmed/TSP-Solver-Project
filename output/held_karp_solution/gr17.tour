@@ -1,0 +1,23 @@
+NAME : gr17.tour
+TYPE : TOUR
+DIMENSION : 17
+TOUR_SECTION
+1
+16
+12
+9
+5
+2
+10
+11
+3
+15
+14
+17
+6
+8
+7
+13
+4
+-1
+EOF

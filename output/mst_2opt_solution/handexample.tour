@@ -1,0 +1,11 @@
+NAME : example5.tour
+TYPE : TOUR
+DIMENSION : 5
+TOUR_SECTION
+1
+2
+4
+3
+5
+-1
+EOF

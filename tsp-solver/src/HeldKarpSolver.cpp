@@ -1,10 +1,12 @@
+// Partly edited by Claude (Claude Opus 5.5), 2026-11-14: comment on the recurrence, include order, formatting
 #include "HeldKarpSolver.hpp"
 #include <algorithm>
 #include <limits>
-#include <vector>
 #include <stdexcept>
 #include <string>
+#include <vector>
 #include "Subset.hpp"
+
 
 namespace tsp {
 
@@ -20,7 +22,7 @@ Tour HeldKarpSolver::solve(const TspInstance& instance) const {
         }
         return tour;
     }
-    
+
     if (n > maxCities) {
         throw std::invalid_argument("Held-Karp is limited to " + std::to_string(maxCities) + " cities");
     }
@@ -37,7 +39,10 @@ Tour HeldKarpSolver::solve(const TspInstance& instance) const {
     const std::size_t m = n - 1;
     const double infinity = std::numeric_limits<double>::infinity();
 
-    // cost[S * m + k] is the shortest path from city 0 through all of S ending at city k + 1
+    // cost[S * m + k] is the length of the shortest path that starts at city 0, visits every city of S once and ends at city k + 1 (k in S). It is filled by increasing size of S:
+    //   cost[{k}][k] = d(0, k + 1)
+    //   cost[S][k]   = min over i in S - {k} of cost[S - {k}][i] + d(i + 1, k + 1)
+    // and the optimal tour length is the min over k of cost[all][k] + d(k + 1, 0)
     std::vector<double> cost((1ULL << m) * m, infinity);
 
     for (std::size_t k = 0; k < m; k++) {
@@ -94,6 +99,7 @@ Tour HeldKarpSolver::solve(const TspInstance& instance) const {
     }
     tour.push_back(0);
     std::reverse(tour.begin(), tour.end());
+    
     return tour;
 }
 

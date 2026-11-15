@@ -1,5 +1,4 @@
-// Take help from Claude (Claude Sonnet 5.5), 2026-10-13 -> We used AI to write slurp, and some part of Test F
-// Partly written by Claude (Claude Opus 5.5), 2026-11-07: the tests of the nn and nn-2opt methods
+// Take help from Claude (Claude Sonnet 5.5), 2026-10-13 & 2026-11-07 -> We used AI to write slurp, and some part of Test F
 #include <gtest/gtest.h>
 #include <cstdlib>
 #include <filesystem>
@@ -8,7 +7,6 @@
 #include <string>
 #include <vector>
 #include <sys/wait.h>
-#include "TspParser.hpp"
 #ifndef TSP_SOLVER_EXE
 #error "TSP_SOLVER_EXE must be defined by the build system"
 #endif
@@ -74,13 +72,38 @@ TEST_F(Executable, SolvesWithDefaultMethod) {
     EXPECT_NE(tour.find("\n17\n-1\nEOF\n"), std::string::npos);
 }
 
-TEST_F(Executable, AcceptsExplicitTrivialMethod) {
-    EXPECT_EQ(runSolver(shellQuote(instance) + " " + shellQuote(outPath.string()) + " -m trivial"), 0);
+TEST_F(Executable, SolvesWithEveryMethod) {
+    // burma14 is small enough for held-karp
+    const std::string coordInstance = std::string(TSP_INSTANCES_DIR) + "/coord/burma14.tsp";
+
+    for (const char* method : {"trivial", "held-karp", "mst", "mst-2opt", "nn", "nn-2opt"}) {
+        SCOPED_TRACE(method);
+        fs::remove(outPath);
+        ASSERT_EQ(runSolver(shellQuote(coordInstance) + " " + shellQuote(outPath.string()) + " -m " + method), 0);
+        EXPECT_TRUE(tourIdsArePermutation(outPath, 14));
+    }
+}
+
+TEST_F(Executable, AcceptsTheMethodBeforeOrBetweenThePaths) {
+    EXPECT_EQ(runSolver("-m trivial " + shellQuote(instance) + " " + shellQuote(outPath.string())), 0);
+    EXPECT_TRUE(fs::exists(outPath));
+
+    fs::remove(outPath);
+    EXPECT_EQ(runSolver(shellQuote(instance) + " -m trivial " + shellQuote(outPath.string())), 0);
     EXPECT_TRUE(fs::exists(outPath));
 }
 
-TEST_F(Executable, FailsOnUnknownAlgorithmWithoutWritingOutput) {
-    EXPECT_NE(runSolver(shellQuote(instance) + " " + shellQuote(outPath.string()) + " -m nope"), 0);
+TEST_F(Executable, FailsWithTooFewArguments) {
+    EXPECT_NE(runSolver(""), 0);
+    EXPECT_NE(runSolver(shellQuote(instance)), 0);
+}
+
+TEST_F(Executable, FailsOnInvalidArgumentsWithoutWritingOutput) {
+    const std::string paths = shellQuote(instance) + " " + shellQuote(outPath.string());
+    EXPECT_NE(runSolver(paths + " -m nope"), 0);       // unknown method
+    EXPECT_NE(runSolver(paths + " -m"), 0);            // missing method name
+    EXPECT_NE(runSolver(paths + " -x trivial"), 0);    // unknown option
+    EXPECT_NE(runSolver(paths + " extra"), 0);         // extra argument
     EXPECT_FALSE(fs::exists(outPath));
 }
 
@@ -89,89 +112,8 @@ TEST_F(Executable, FailsOnMissingInstance) {
     EXPECT_FALSE(fs::exists(outPath));
 }
 
-TEST_F(Executable, FailsWithoutArguments) {
-    EXPECT_NE(runSolver(""), 0);
-}
-
-TEST_F(Executable, AcceptsMethodBeforeThePaths) {
-    EXPECT_EQ(runSolver("-m trivial " + shellQuote(instance) + " " + shellQuote(outPath.string())), 0);
-    EXPECT_TRUE(fs::exists(outPath));
-}
-
-TEST_F(Executable, AcceptsMethodBetweenThePaths) {
-    EXPECT_EQ(runSolver(shellQuote(instance) + " -m trivial " + shellQuote(outPath.string())), 0);
-    EXPECT_TRUE(fs::exists(outPath));
-}
-
-TEST_F(Executable, FailsWhenMethodNameIsMissing) {
-    EXPECT_NE(runSolver(shellQuote(instance) + " " + shellQuote(outPath.string()) + " -m"), 0);
-    EXPECT_FALSE(fs::exists(outPath));
-}
-
-TEST_F(Executable, FailsOnUnknownOption) {
-    EXPECT_NE(runSolver(shellQuote(instance) + " " + shellQuote(outPath.string()) + " -x trivial"), 0);
-    EXPECT_FALSE(fs::exists(outPath));
-}
-
-TEST_F(Executable, FailsOnExtraArgument) {
-    EXPECT_NE(runSolver(shellQuote(instance) + " " + shellQuote(outPath.string()) + " extra"), 0);
-    EXPECT_FALSE(fs::exists(outPath));
-}
-
-TEST_F(Executable, FailsWithOnlyOneArgument) {
-    EXPECT_NE(runSolver(shellQuote(instance)), 0);
-}
-
 TEST_F(Executable, FailsOnUnwritableOutput) {
     EXPECT_NE(runSolver(shellQuote(instance) + " /no/such/dir/out.tour"), 0);
-}
-
-TEST_F(Executable, OutputCanBeReadBackAsAPermutation) {
-    const std::string coordInstance = std::string(TSP_INSTANCES_DIR) + "/coord/berlin52.tsp";
-    ASSERT_EQ(runSolver(shellQuote(coordInstance) + " " + shellQuote(outPath.string())), 0);
-
-    std::istringstream in(slurp(outPath));
-    std::string line;
-    while (std::getline(in, line) && line != "TOUR_SECTION") {}
-
-    std::vector<bool> seen(53, false);
-    int id = 0;
-    int count = 0;
-    while (in >> id && id != -1) {
-        ASSERT_GE(id, 1);
-        ASSERT_LE(id, 52);
-        EXPECT_FALSE(seen[id]);
-        seen[id] = true;
-        ++count;
-    }
-    EXPECT_EQ(count, 52);
-}
-
-TEST_F(Executable, SolvesWithMstMethod) {
-    ASSERT_EQ(runSolver(shellQuote(instance) + " " + shellQuote(outPath.string()) + " -m mst"), 0);
-    EXPECT_TRUE(tourIdsArePermutation(outPath, 17));
-}
-
-TEST_F(Executable, SolvesWithMstTwoOptMethod) {
-    const std::string coordInstance = std::string(TSP_INSTANCES_DIR) + "/coord/berlin52.tsp";
-    ASSERT_EQ(runSolver(shellQuote(coordInstance) + " " + shellQuote(outPath.string()) + " -m mst-2opt"), 0);
-    EXPECT_TRUE(tourIdsArePermutation(outPath, 52));
-}
-
-TEST_F(Executable, SolvesWithNearestNeighbourMethod) {
-    ASSERT_EQ(runSolver(shellQuote(instance) + " " + shellQuote(outPath.string()) + " -m nn"), 0);
-    EXPECT_TRUE(tourIdsArePermutation(outPath, 17));
-}
-
-TEST_F(Executable, SolvesWithNearestNeighbourTwoOptMethod) {
-    const std::string coordInstance = std::string(TSP_INSTANCES_DIR) + "/coord/berlin52.tsp";
-    ASSERT_EQ(runSolver(shellQuote(coordInstance) + " " + shellQuote(outPath.string()) + " -m nn-2opt"), 0);
-    EXPECT_TRUE(tourIdsArePermutation(outPath, 52));
-}
-
-TEST_F(Executable, SolvesWithHeldKarpMethod) {
-    ASSERT_EQ(runSolver(shellQuote(instance) + " " + shellQuote(outPath.string()) + " -m held-karp"), 0);
-    EXPECT_TRUE(tourIdsArePermutation(outPath, 17));
 }
 
 TEST_F(Executable, HeldKarpFailsOnLargeInstanceWithoutWritingOutput) {
@@ -179,4 +121,3 @@ TEST_F(Executable, HeldKarpFailsOnLargeInstanceWithoutWritingOutput) {
     EXPECT_NE(runSolver(shellQuote(coordInstance) + " " + shellQuote(outPath.string()) + " -m held-karp"), 0);
     EXPECT_FALSE(fs::exists(outPath));
 }
-

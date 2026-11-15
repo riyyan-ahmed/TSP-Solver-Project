@@ -1,35 +1,24 @@
+// Partly edited by Claude (Claude Opus 5.5), 2026-11-14: include order and trailing spaces
 #include <gtest/gtest.h>
 #include <algorithm>
 #include <limits>
 #include <memory>
 #include <numeric>
+#include <stdexcept>
 #include <utility>
 #include <vector>
 #include "CoordinatesGraph.hpp"
 #include "HeldKarpSolver.hpp"
-#include "MatrixGraph.hpp"
-#include <string> 
-#include <stdexcept>
-#include "TspParser.hpp" 
-
+#include "TestHelpers.hpp"
 
 using namespace tsp;
-#ifndef TSP_INSTANCES_DIR
-#error "TSP_INSTANCES_DIR must be defined by the build system"
-#endif
+using namespace helpers;
 
 namespace {
     TspInstance makeInstance(std::vector<std::pair<double, double>> points) {
         std::vector<int> ids(points.size());
         std::iota(ids.begin(), ids.end(), 1);
         return TspInstance("test", ids, std::make_unique<CoordinatesGraph>(std::move(points)));
-    }
-
-    bool isPermutation(Tour tour, std::size_t n) {
-        std::sort(tour.begin(), tour.end());
-        Tour expected(n);
-        std::iota(expected.begin(), expected.end(), 0);
-        return tour == expected;
     }
 
     // tries every tour that starts at city 0
@@ -83,8 +72,7 @@ TEST(HeldKarpSolver, FindsTheKnownOptimaOfTheSmallInstances) {
 
     for (const auto& [file, optimum] : known) {
         SCOPED_TRACE(file);
-        TspParser parser;
-        TspInstance instance = parser.parse(std::string(TSP_INSTANCES_DIR) + "/" + file);
+        TspInstance instance = load(file);
         const Tour tour = HeldKarpSolver().solve(instance);
         EXPECT_TRUE(isPermutation(tour, instance.size()));
         EXPECT_DOUBLE_EQ(instance.getGraph().tourLength(tour), optimum);

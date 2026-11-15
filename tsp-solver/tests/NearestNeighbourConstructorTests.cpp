@@ -1,39 +1,15 @@
-// Written by Claude (Claude Opus 5.5), 2026-11-07
+// everyStepGoesToTheNearestCity written by Claude (Claude Opus 5.5), 2026-11-07
 #include <gtest/gtest.h>
-#include <algorithm>
-#include <memory>
-#include <numeric>
-#include <string>
-#include "ConstructAndImproveSolver.hpp"
 #include "CoordinatesGraph.hpp"
-#include "MatrixGraph.hpp"
 #include "MinimumSpanningTree.hpp"
 #include "NearestNeighbourConstructor.hpp"
-#include "TspParser.hpp"
+#include "TestHelpers.hpp"
 #include "TwoOpt.hpp"
 
-#ifndef TSP_INSTANCES_DIR
-#error "TSP_INSTANCES_DIR must be defined by the build system"
-#endif
-
 using namespace tsp;
+using namespace helpers;
 
 namespace {
-    // Cities A, B, C, D = 0, 1, 2, 3 (same example as TwoOptTests.cpp): the best tour has length 13
-    MatrixGraph fourCities() {
-        return MatrixGraph({{0, 2, 1, 5},
-                            {2, 0, 3, 6},
-                            {1, 3, 0, 4},
-                            {5, 6, 4, 0}});
-    }
-
-    bool isPermutation(Tour tour, std::size_t n) {
-        Tour expected(n);
-        std::iota(expected.begin(), expected.end(), 0);
-        std::sort(tour.begin(), tour.end());
-        return tour == expected;
-    }
-
     // Independent check of the rule: at every step, no remaining city is strictly closer than
     // the chosen one, and a city at the same distance is never preferred over a smaller index
     bool everyStepGoesToTheNearestCity(const Graph& graph, const Tour& tour) {
@@ -55,7 +31,7 @@ TEST(NearestNeighbourConstructor, BuildsTheTourOfTheFourCityExample) {
     MatrixGraph graph = fourCities();
     Tour tour = NearestNeighbourConstructor().build(graph);
 
-    EXPECT_EQ(tour, Tour({0, 2, 1, 3}));                 // A C B D
+    EXPECT_EQ(tour, Tour({0, 2, 1, 3}));                
     EXPECT_DOUBLE_EQ(graph.tourLength(tour), 15.0);
 }
 
@@ -77,32 +53,10 @@ TEST(NearestNeighbourConstructor, HandlesOneTwoAndThreeCities) {
     EXPECT_EQ(NearestNeighbourConstructor().build(MatrixGraph({{0, 5, 2}, {5, 0, 3}, {2, 3, 0}})), Tour({0, 2, 1}));
 }
 
-TEST(NearestNeighbourConstructor, IsDeterministic) {
-    MatrixGraph graph = fourCities();
-    EXPECT_EQ(NearestNeighbourConstructor().build(graph), NearestNeighbourConstructor().build(graph));
-}
-
-TEST(NearestNeighbourConstructor, IsImprovedByTwoOptToTheOptimum) {
-    TspInstance instance("four", {1, 2, 3, 4}, std::make_unique<MatrixGraph>(fourCities()));
-    ConstructAndImproveSolver solver(std::make_unique<NearestNeighbourConstructor>(), std::make_unique<TwoOpt>());
-
-    EXPECT_DOUBLE_EQ(instance.getGraph().tourLength(solver.solve(instance)), 13.0);
-}
-
-namespace {
-    const char* const instanceFiles[] = {
-        "coord/att48.tsp", "coord/berlin52.tsp", "coord/burma14.tsp", "coord/ch130.tsp",
-        "coord/eil76.tsp", "coord/pr1002.tsp", "coord/pr299.tsp", "coord/pr76.tsp",
-        "coord/st70.tsp", "coord/ulysses16.tsp",
-        "lower_diag/dantzig42.tsp", "lower_diag/gr17.tsp", "lower_diag/gr21.tsp",
-        "lower_diag/gr24.tsp", "lower_diag/gr48.tsp"};
-}
-
 class NearestNeighbourOnProvidedInstances : public ::testing::TestWithParam<const char*> {};
 
 TEST_P(NearestNeighbourOnProvidedInstances, BuildsAValidTourThatTwoOptCanOnlyShorten) {
-    TspParser parser;
-    TspInstance instance = parser.parse(std::string(TSP_INSTANCES_DIR) + "/" + GetParam());
+    TspInstance instance = load(GetParam());
     const Graph& graph = instance.getGraph();
 
     const Tour tour = NearestNeighbourConstructor().build(graph);

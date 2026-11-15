@@ -1,5 +1,8 @@
+// Partly edited by Claude (Claude Opus 5.5), 2026-11-14: std::countr_zero in ElementsIterator::operator*, formatting
 #include "Subset.hpp"
+#include <bit>
 #include <stdexcept>
+
 
 namespace subset {
 
@@ -25,6 +28,7 @@ void Subset::add(std::size_t i) {
     if (i >= n) {
         throw std::out_of_range("Element out of range");
     }
+
     bits |= 1ULL << i;
 }
 
@@ -42,12 +46,8 @@ unsigned long long Subset::index() const {
 Subset::ElementsIterator::ElementsIterator(unsigned long long remaining) : remaining(remaining) {}
 
 std::size_t Subset::ElementsIterator::operator*() const {
-    // position of the lowest bit set to 1
-    std::size_t position = 0;
-    while (((remaining >> position) & 1ULL) == 0) {
-        position++;
-    }
-    return position;
+    // position of the lowest bit set to 1, counted in one instruction instead of a loop
+    return static_cast<std::size_t>(std::countr_zero(remaining));
 }
 
 Subset::ElementsIterator& Subset::ElementsIterator::operator++() {
@@ -78,6 +78,7 @@ std::ostream& operator<<(std::ostream& output, const Subset& s) {
     }
     return output << "}";
 }
+
 SubsetIterator::SubsetIterator(std::size_t n, std::size_t k) : current(k, n), k(k) {}
 
 SubsetIterator SubsetIterator::end() {
@@ -109,6 +110,7 @@ SubsetIterator& SubsetIterator::operator++() {
     } else {
         current.bits = next;
     }
+    
     return *this;
 }
 
@@ -118,6 +120,5 @@ bool SubsetIterator::operator!=(const SubsetIterator& other) const {
     }
     return current.index() != other.current.index();
 }
-
 
 }

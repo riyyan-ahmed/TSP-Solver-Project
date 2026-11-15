@@ -1,3 +1,4 @@
+// Understand code logic for MST using Claude and online documentation and implemented it
 #include "MinimumSpanningTree.hpp"
 #include <algorithm>
 #include <limits>
