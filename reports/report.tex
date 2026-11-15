@@ -1,5 +1,4 @@
 \documentclass[10pt,a4paper]{article}
-
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
 \usepackage[english]{babel}
@@ -23,6 +22,7 @@
 \usepackage[small,compact]{titlesec}
 \usepackage{enumitem}
 \usepackage[hidelinks]{hyperref}
+\usepackage{refcount}
 
 % Code listings
 \lstset{language=C++, basicstyle=\ttfamily\footnotesize, keywordstyle=\bfseries,
@@ -77,21 +77,20 @@ Final submission, 15 November 2026\\[0.4em]
 \maketitle
 
 \begin{abstract}
-\noindent
 This report presents our C++ solver for the metric Travelling Salesman Problem, written for the M1 AI programming project. The program reads both TSPLIB formats of the provided instances, computes a tour with the method chosen on the command line and writes it in the required tour format. Besides the trivial method, it offers the exact Held-Karp algorithm, which stores sets of cities as bitmasks, and two fast heuristics: a tour is first built from a minimum spanning tree or by always moving to the nearest city, and is then shortened with 2-opt. Held-Karp returns the published optimum on every provided instance of up to 24 cities, its limit. On the 15 provided instances, the two heuristics give tours that are on average 5.6\,\% and 5.7\,\% longer than the optimum, and they solve the largest instance, \texttt{pr1002}, in under 40\,ms. All 157 automated tests pass. We describe how we organised the work, how the code is structured and why, the algorithms and their complexity, the tests, and the performance evaluation.
 \end{abstract}
 
 \section{Introduction}
 
-The Travelling Salesman Problem asks for the shortest round trip that visits every city of a list exactly once and returns to its start. The problem is NP-hard: exact methods take exponential time, so practical solvers rely on heuristics that find good, but not always optimal, tours. As in the subject~\cite{subject}, we consider the metric case, where the graph is complete and the distances satisfy the triangle inequality.
+The Travelling Salesman Problem is the problem of finding the shortest round trip that visits each city of a list exactly once, and then returns to the starting city. The problem is NP-hard; exact methods require exponential time, and there are practical methods based on heuristics that find good, but not necessarily optimal, tours. As specified in the subject~\cite{subject}, we consider a complete metric graph satisfying the triangle inequality.
 
-Our goal was a program that reads an instance in the TSPLIB format, solves it with a method chosen by the user and writes the tour to a file, together with a test suite and a build script that follow the specification exactly. Half of the grade rewards the quality of the design, so we split the program into small classes with one clear job each, connected through interfaces. The mid-term version (18 October) already read both input formats and ran the trivial method. This final version adds the Held-Karp algorithm, two heuristics based on 2-opt, the official TSPLIB distance functions and a reproducible performance evaluation.
+Our target was a program which reads a TSPLIB instance, solves using the user's specified method and writes the tour to a file along with a test suite and a build script which exactly reflects the specification. Half of the grade is based on the quality of the design, so the program is divided into small classes, where one single job is assigned to each, linked through interfaces. The mid term version (18 October) has already read both formats and performed the trivial method. This final version includes the Held-Karp algorithm, two heuristics inspired by 2-opt, the official TSPLIB distance functions and a reproducible performance evaluation.
 
 Section~\ref{sec-compliance} shows that every requirement of the subject is met. Section~\ref{sec-team} describes how we worked, Section~\ref{sec-run} how to build and run the program, Sections~\ref{sec-design} to~\ref{sec-complexity} the design and the algorithms, and Sections~\ref{sec-testing} and~\ref{sec-perf} the tests and the measurements.
 
 \section{Requirements and compliance}\label{sec-compliance}
 
-Table~\ref{tab-compliance} lists every requirement of the subject~\cite{subject}, its status and the part of this report that shows it. \textbf{All the requirements are met in the submitted version.} Where the subject leaves a point open (optional \texttt{EOF}, skipped display section, identifiers starting at 0 or 1, name of the tour file, default method, strict command line), Sections~\ref{sec-run} and~\ref{sec-design} describe our decision.
+Table~\ref{tab-compliance} summarizes the requirements of the subject~\cite{subject}, their compliance status, and supporting sections. \textbf{All requirements are met.} Where the subject leaves a point open (optional \texttt{EOF}, skipped display section, identifiers starting at 0 or 1, name of the tour file, default method, strict command line), Sections~\ref{sec-run} and~\ref{sec-design} describe our decision.
 
 \begin{table}[H]
 \centering\footnotesize
@@ -100,21 +99,21 @@ Table~\ref{tab-compliance} lists every requirement of the subject~\cite{subject}
 Spec. & Requirement & Status & Where \\
 \midrule
 2.1.1 & Sources delivered as a \texttt{.zip} or \texttt{.tar.gz} archive & \ok\ archive of the repository & -- \\
-2.1.1 & \texttt{bash build-TSPsolver.sh}, at the root, builds the project in \texttt{build/} & \ok & \S\ref{sec-run} \\
-2.1.1 & The build creates \texttt{build/TSPsolver} and \texttt{build/tests} & \ok & \S\ref{sec-run} \\
-2.1.2 & \texttt{./build/TSPsolver <instance> <output>} runs the default method & \ok\ default method: \texttt{trivial} & \S\ref{sec-run} \\
-2.1.3 & Option \texttt{-m} with at least \texttt{trivial} and \texttt{held-karp} & \ok & \S\ref{sec-run} \\
-2.1.3 & At least one more method of our choice & \ok\ \texttt{mst-2opt}, \texttt{nn-2opt} (and \texttt{mst}, \texttt{nn}) & \S\ref{sec-algorithms} \\
-2.1.4 & \texttt{./build/tests} runs all the tests & \ok\ 157 tests, all passing & \S\ref{sec-testing} \\
-2.2 & Coordinate files (\texttt{NODE\_COORD\_SECTION}) & \ok\ 10 files: \texttt{EUC\_2D}, \texttt{ATT}, \texttt{GEO} & \S\ref{sec-parsing} \\
-2.2 & Lower triangular matrix files (\texttt{LOWER\_DIAG\_ROW}) & \ok\ 5 files & \S\ref{sec-parsing} \\
-2.3 & Tour file format & \ok\ checked on every tour we wrote & \S\ref{sec-testing}, \S\ref{sec-writing} \\
-2.4.1 & Trivial method & \ok & \S\ref{sec-trivial} \\
-2.4.2 & Held-Karp algorithm, with backtracking to recover the tour & \ok\ optimal on every instance of up to 24 cities & \S\ref{sec-hk} \\
-2.4.3 & Additional method, discussed with the teacher before coding & \ok\ approved by the teacher & \S\ref{sec-choice} \\
-2.5 & Performance evaluation: time, solution quality, scalability & \ok\ tables and figures & \S\ref{sec-perf} \\
+2.1.1 & \texttt{bash build-TSPsolver.sh}, at the root, builds the project in \texttt{build/} & \ok & \hyperref[sec-run]{\getrefnumber{sec-run}} \\
+2.1.1 & The build creates \texttt{build/TSPsolver} and \texttt{build/tests} & \ok & \hyperref[sec-run]{\getrefnumber{sec-run}} \\
+2.1.2 & \texttt{./build/TSPsolver <instance> <output>} runs the default method & \ok\ default method: \texttt{trivial} & \hyperref[sec-run]{\getrefnumber{sec-run}} \\
+2.1.3 & Option \texttt{-m} with at least \texttt{trivial} and \texttt{held-karp} & \ok & \hyperref[sec-run]{\getrefnumber{sec-run}} \\
+2.1.3 & At least one more method of our choice & \ok\ \texttt{mst-2opt}, \texttt{nn-2opt} (and \texttt{mst}, \texttt{nn}) & \hyperref[sec-algorithms]{\getrefnumber{sec-algorithms}} \\
+2.1.4 & \texttt{./build/tests} runs all the tests & \ok\ 157 tests, all passing & \hyperref[sec-testing]{\getrefnumber{sec-testing}} \\
+2.2 & Coordinate files (\texttt{NODE\_COORD\_SECTION}) & \ok\ 10 files: \texttt{EUC\_2D}, \texttt{ATT}, \texttt{GEO} & \hyperref[sec-parsing]{\getrefnumber{sec-parsing}} \\
+2.2 & Lower triangular matrix files (\texttt{LOWER\_DIAG\_ROW}) & \ok\ 5 files & \hyperref[sec-parsing]{\getrefnumber{sec-parsing}} \\
+2.3 & Tour file format & \ok\ checked on every tour we wrote & \hyperref[sec-testing]{\getrefnumber{sec-testing}}, \hyperref[sec-writing]{\getrefnumber{sec-writing}} \\
+2.4.1 & Trivial method & \ok & \hyperref[sec-trivial]{\getrefnumber{sec-trivial}} \\
+2.4.2 & Held-Karp algorithm, with backtracking to recover the tour & \ok\ optimal on every instance of up to 24 cities & \hyperref[sec-hk]{\getrefnumber{sec-hk}} \\
+2.4.3 & Additional method, discussed with the teacher before coding & \ok\ approved by the teacher & \hyperref[sec-choice]{\getrefnumber{sec-choice}} \\
+2.5 & Performance evaluation: time, solution quality, scalability & \ok\ tables and figures & \hyperref[sec-perf]{\getrefnumber{sec-perf}} \\
 3.2 & PDF report: chronology, features, design, performance & \ok & this report \\
-4 & Use of AI documented, AI-generated code marked in the code & \ok & last section \\
+4 & Use of AI documented, AI-generated code marked in the code & \ok & \hyperref[sec-last]{\getrefnumber{sec-last}} \\
 \bottomrule
 \end{tabularx}
 \caption{Requirements of the subject and where they are met.}
@@ -131,13 +130,13 @@ The subject asks for a more detailed description of any feature that goes beyond
 \toprule
 Feature & Why we added it & Where \\
 \midrule
-TSPLIB distance functions: rounded \texttt{EUC\_2D}, \texttt{ATT} and \texttt{GEO} & Tour lengths now match the published optima. With the plain Euclidean distance of the mid-term, the trivial tour of \texttt{burma14} measured 42.5 instead of 4\,562 & \S\ref{sec-distances} \\
-Methods \texttt{mst} and \texttt{nn} without 2-opt & They show what 2-opt adds on its own, and each one costs a single line in the command line & \S\ref{sec-algorithms} \\
-City identifiers starting at 0 or 1 & TSPLIB numbers cities from 1, \texttt{instance\_generator.py} from 0. The tour file always uses the identifiers of the input & \S\ref{sec-parsing} \\
-\texttt{-m} accepted anywhere, strict argument checking & A wrong call prints a message, exits with status 1 and never writes a tour file & \S\ref{sec-run} \\
-Tour checked before the output file is opened & An invalid tour can never overwrite a previous result & \S\ref{sec-writing} \\
-Held-Karp limited to 24 cities & At 24 cities its table already takes 1.5\,GB, and every extra city more than doubles it. The program refuses with a clear message instead of running out of memory & \S\ref{sec-hk} \\
-\texttt{benchmark.py} and \texttt{plot\_results.py} & They reproduce every number and figure of Section~\ref{sec-perf} and check each tour file independently of the C++ code & \S\ref{sec-perf} \\
+TSPLIB distance functions: rounded \texttt{EUC\_2D}, \texttt{ATT} and \texttt{GEO} & Tour lengths now match the published optima. With the plain Euclidean distance of the mid-term, the trivial tour of \texttt{burma14} measured 42.5 instead of 4\,562 & \hyperref[sec-distances]{\getrefnumber{sec-distances}} \\
+Methods \texttt{mst} and \texttt{nn} without 2-opt & They show what 2-opt adds on its own, and each one costs a single line in the command line & \hyperref[sec-algorithms]{\getrefnumber{sec-algorithms}} \\
+City identifiers starting at 0 or 1 & TSPLIB numbers cities from 1, \texttt{instance\_generator.py} from 0. The tour file always uses the identifiers of the input & \hyperref[sec-parsing]{\getrefnumber{sec-parsing}} \\
+\texttt{-m} accepted anywhere, strict argument checking & A wrong call prints a message, exits with status 1 and never writes a tour file & \hyperref[sec-run]{\getrefnumber{sec-run}} \\
+Tour checked before the output file is opened & An invalid tour can never overwrite a previous result & \hyperref[sec-writing]{\hyperref[sec-writing]{\getrefnumber{sec-writing}}} \\
+Held-Karp limited to 24 cities & At 24 cities its table already takes 1.5\,GB, and every extra city more than doubles it. The program refuses with a clear message instead of running out of memory & \hyperref[sec-hk]{\getrefnumber{sec-hk}} \\
+\texttt{benchmark.py} and \texttt{plot\_results.py} & They reproduce every number and figure of Section~\ref{sec-perf} and check each tour file independently of the C++ code & \hyperref[sec-perf]{\getrefnumber{sec-perf}} \\
 \bottomrule
 \end{tabularx}
 \caption{Features that go beyond the subject.}
@@ -148,7 +147,7 @@ Held-Karp limited to 24 cities & At 24 cities its table already takes 1.5\,GB, a
 
 \subsection{Division of the work}
 
-We kept the organisation of the mid-term: each of us worked on his own feature branch, \texttt{riyyan-feature} and \texttt{salah\_feature}, and we agreed on the shared classes before coding so that neither of us had to wait for the other. Table~\ref{tab-team} shows who did what before and after the mid-term checkpoint. For the final version, Salah implemented the TSPLIB distance functions and the Held-Karp algorithm, and wrote and ran their tests. Riyyan implemented the third method, 2-opt with its two starting tours, and its tests, reviewed and cleaned up the whole test suite, ran every instance and the scaling measurements, and wrote the report. On 9 November Salah merged \texttt{riyyan-feature} into his branch before adding Held-Karp, and on 14 November \texttt{riyyan-feature} was fast-forwarded to it, so the branch we submit contains both parts.
+We did have each one of us working in his own feature branch, \texttt{riyyan-feature} and \texttt{salah\_feature} respectively, and we agreed on the common classes beforehand so that neither of us had to wait for each other to finish coding. The results of these actions prior to and following the mid-term checkpoint are summarized in Table~\ref{tab-team}. For the final version, Salah implemented the TSPLIB distance functions and the Held-Karp algorithm, and wrote and executed their tests. Riyyan implemented the third method, 2-opt with its two starting tours, together with its tests. He also reviewed and cleaned up the entire test suite, ran all the instances and the scaling measurements, and prepared the report. On 9 November Salah merged \texttt{riyyan-feature} into his branch, then added Held-Karp, and on 14 November, \texttt{riyyan-feature} was fast-forwarded to Salah's branch; the branch we submit includes both.
 
 \begin{table}[H]
 \centering\footnotesize
@@ -203,7 +202,11 @@ Date & Who & Work & Commit \\
 17 Oct & Both & Report completed (written alongside the code throughout the project) & -- \\
 18 Oct & Riyyan & \textbf{Mid-term submission}: final report, tours of the instances and first timing script & \commit{e392f8e}, \commit{ef11ced}, \commit{4725d6e}, \commit{2cf4f16} \\
 \midrule
-\multicolumn{4}{@{}l}{\textit{After the mid-term checkpoint}} \\
+\vspace{0.5mm}  
+\\
+\multicolumn{4}{@{}l}{\textbf{After the mid-term checkpoint}} \\
+\vspace{0.5mm}  
+\\
 19 Oct & Both & Study of fast heuristics for the third method: 2-opt local search, ant colony optimisation, simulated annealing, genetic algorithms (Section~\ref{sec-choice}) & -- \\
 20 Oct & Both & Study of existing Held-Karp implementations; choice of a bitmask representation of the subsets, familiar from the labs & -- \\
 24 Oct & Riyyan & After the teacher approved the third method: 2-opt local search, \texttt{TourConstructor} and \texttt{TourImprover} interfaces, \texttt{ConstructAndImproveSolver}, tests & \commit{2faeb99} \\
@@ -214,7 +217,7 @@ Date & Who & Work & Commit \\
 11 Nov & Salah & Outdated comment fixed in \texttt{CoordinatesGraph} & \commit{88c0dab} \\
 12 Nov & Salah & \texttt{Subset} and \texttt{SubsetIterator} (Gosper's hack), Held-Karp solver with backtracking, option \texttt{-m held-karp}, limit of 24 cities & \commit{8ec7d23}, \commit{4f8a29d}, \commit{959e868}, \commit{aff7f22}, \commit{55f365b} \\
 14 Nov & Riyyan & \texttt{riyyan-feature} fast-forwarded to \texttt{salah\_feature}, so the submitted branch contains both parts & -- \\
-15 Nov & Riyyan & \textbf{Final submission}: final review and fixes, cleaned test suite, benchmark and figures, final report & \textit{(last commit)} \\
+15 Nov & Riyyan & \textbf{Final submission}: final review and fixes, cleaned test suite, benchmark and figures, final report & \commit{48eaff4} \\
 \end{xltabular}}
 
 \subsection{Choosing the algorithms}\label{sec-choice}
@@ -238,16 +241,16 @@ Genetic algorithm & A population of tours combined by crossover and mutation & R
 \label{tab-candidates}
 \end{table}
 
-\noindent We chose to build a tour from a minimum spanning tree or by nearest neighbour, and then improve it with 2-opt, for four reasons:
+\noindent There are four reasons why we decided to construct the tour either from a minimum spanning tree or by using nearest neighbour and then to improve it by using 2-opt:
 \begin{itemize}
-  \item \textbf{We understood it completely.} Each step is a classic algorithm that we could explain and check by hand: Prim's algorithm for the tree, a depth-first walk for the order, the nearest neighbour rule and the 2-opt move.
-  \item \textbf{It fits our design.} Building a tour and improving a tour are two separate jobs, so each one got its own interface (\texttt{TourConstructor}, \texttt{TourImprover}) and one solver combines them. Two constructions and one improvement give four methods (\texttt{mst}, \texttt{mst-2opt}, \texttt{nn}, \texttt{nn-2opt}) for little extra code.
-  \item \textbf{It comes with a guarantee.} On metric instances the MST tour is at most twice the weight of the tree, and therefore at most twice the optimum; our tests check this bound on every coordinate instance. Nearest neighbour has no such guarantee, which makes the comparison between the two interesting.
-  \item \textbf{It is deterministic and polynomial.} The same input always gives the same tour, so the tests can expect exact tours, and each construction and each 2-opt pass costs $O(n^2)$, which is fast enough for \texttt{pr1002}.
+  \item \textbf{We understood it completely.} Each step is a classic algorithm, one which we could explain and perform by hand: the tree of the Prim algorithm; the order of the depth-first walk; the nearest neighbour rule; the 2-opt move.
+  \item \textbf{It fits our design.} building a tour and improving a tour are two different tasks so each of them was allocated to its own interface (\texttt{TourConstructor}, \texttt{TourImprover}) and one solver was combined to perform both tasks. Four methods (\texttt{mst}, \texttt{mst-2opt}, \texttt{nn}, \texttt{nn-2opt}) are available for little extra code, with two constructions and one improvement.
+  \item \textbf{It comes with a guarantee.} On metric instances, the MST tour is at most twice the weight of the tree, and hence at most twice the optimum; our tests test this bound on all coordinate instances. This is not the case with nearest neighbour, and makes for an interesting comparison.
+  \item \textbf{It is deterministic and polynomial.} The same input will always yield the same tour, so the tests can determine to expect exact tours and each construction and each 2-opt pass takes $O(n^2)$, which is easily handled by \texttt{pr1002}.
 \end{itemize}
-The metaheuristics, in contrast, are random, depend on parameters, and would have needed many runs to evaluate fairly; we could not have implemented and tested them as well in the time we had. We presented this choice to the teacher, who approved it before we started coding.
+The metaheuristics however were random, parameter dependent and would have required many different runs to be evaluated fairly, which we did not have time to do. This was brought to the teacher's attention and he/she agreed to it prior to programming.
 
-For Held-Karp, we studied existing implementations on 20 October. All of them fill a table indexed by a subset of cities and an end city; they differ in how they store the subsets. We chose bitmasks, which we already knew from the subset lab of the course: city 0 is the fixed start, and any set of the other cities is one integer whose bit $k$ says whether city $k+1$ belongs to it. Membership, insertion and removal are then single bit operations, and the integer itself is the row of the table. Section~\ref{sec-hk} describes the table and the order in which it is filled.
+For Held-Karp, we studied what already exists on 20th October. All of them fill a table indexed by subset of cities and end city; differ in storage of the subset of cities. We decided to use bitmasks, which we already had some experience with from the subset lab in the course: city 0 is fixed, and any combination of other cities is a single integer where bit \textbf{$k$} indicates whether city \textbf{$k+1$} is in the combination or not. Then the membership and insertion/removal are only bit operations and the integer is the row of the table. Section~\ref{sec-hk} describes the table and the order in which it is filled.
 
 \subsection{Main challenges}\label{sec-challenges}
 
@@ -269,26 +272,34 @@ Table~\ref{tab-challenges} lists the main challenges of the project, with their 
 \addlinespace[4pt]
 \caption{Main challenges, their cause, our solution and the commit that solved them.}\label{tab-challenges}
 \endlastfoot
-\multicolumn{5}{@{}l}{\textit{Until the mid-term checkpoint}} \\
+\vspace{0.5mm}  
+\\
+\multicolumn{5}{@{}l}{\textbf{Until the mid-term checkpoint}} \\
+\vspace{0.5mm}  
+\\
 1 & First data structure did not hold up & One raw matrix inside \texttt{TspInstance}, circular include with \texttt{TspParser.hpp}, coordinates lost & Class hierarchy based on the graph lab; \texttt{TspInstance} owns its graph and has getters & \commit{30e5ed7} $\rightarrow$ \commit{e8f5266} \\
 2 & Irregular instance files & \texttt{KEY: v} and \texttt{KEY : v}, values containing \texttt{:}, matrix wrapped over lines, \texttt{DISPLAY\_DATA\_SECTION} in \texttt{dantzig42}, no \texttt{EOF} in \texttt{pr1002} & Split at the first \texttt{:} and trim, weights read as a stream, display section skipped, \texttt{EOF} optional & \commit{30e5ed7}, \commit{e8f5266}, \commit{86d5ae0} \\
 3 & Build not matching the specification & Executable named \texttt{main} in the wrong folder, tests not built, global \texttt{-Werror} breaking GoogleTest & Executable renamed \texttt{TSPsolver}, built into \texttt{./build} with the tests, warnings handled only on our targets & \commit{e8f5266}, \commit{86d5ae0} \\
 4 & Bugs found only by the tests & \texttt{tests/} ignored by Git, out of range matrix index, invalid tour emptied the output file & Ignore rule fixed, index checks with exceptions, tour validated before the file is opened & \commit{86d5ae0} \\
 5 & Generated instances rejected & \texttt{instance\_generator.py} numbers cities from 0, the parser required ids from 1 & Ids may start at 0 or 1, cities stored by id & \commit{4287595} \\
 \midrule
-\multicolumn{5}{@{}l}{\textit{After the mid-term checkpoint}} \\
+\vspace{0.5mm}  
+\\
+\multicolumn{5}{@{}l}{\textbf{After the mid-term checkpoint}} \\
+\vspace{0.5mm}  
+\\
 6 & Understanding the existing heuristics and choosing one & Several candidates with very different ideas and parameters; we had to understand each one well enough to judge whether we could implement, test and explain it & Comparison on simplicity, determinism, guarantees and fit with our design (Table~\ref{tab-candidates}); MST and nearest neighbour tours improved by 2-opt, approved by the teacher & \commit{2faeb99} \\
 7 & Tour lengths far from the published optima & One plain Euclidean distance for every coordinate file, while \texttt{ATT} and \texttt{GEO} use other formulas (\texttt{GEO}: degrees and minutes) & Distance type read from the file, the three TSPLIB formulas, tests against the published optima & \commit{69a19af}, \commit{ff5957e}, \commit{fb0f3c7} \\
 8 & Memory of the Held-Karp table & $2^{n-1}(n-1)$ values: 336\,MB at 22 cities, about 1.5\,GB at 24 & Subsets as bitmasks in one flat array, Gosper's hack for the order, solver refuses more than 24 cities & \commit{8ec7d23}, \commit{4f8a29d}, \commit{55f365b} \\
 \end{xltabular}}
 
-Challenges 1 and 6 cost us the most time. Replacing the first data structure meant rewriting the instance class and part of the parser, but it paid off: afterwards, every solver was added without touching the parser or the graph classes. Choosing the third method was harder than coding it. We spent a full day reading about the candidates before settling on the one we could understand, test and explain completely.
+Challenges 1 and 6 were the hardest for us to do in time. The change of the first data structure required a rewrite of the instance class and part of the parser, but it was worth it; from then on, each solver could be added without changing the parser or the graph classes. It was more challenging to decide on the third approach than to code it. We read much about the candidates for a whole day before we finally picked the one we could understand, test and explain completely.
 
 \section{Build and run}\label{sec-run}
 
 \subsection{Building and running}
 
-The project needs a C++20 compiler, CMake 3.16 or newer and, the first time only, an internet connection, because CMake downloads GoogleTest~1.17.0~\cite{gtest}. We built and tested it with Apple clang~21 on macOS. The build script configures a Release build (\texttt{-O3}) in \texttt{build/} and compiles the library, the solver and the tests. Table~\ref{tab-methods} lists the methods accepted by \texttt{-m}.
+The project requires a C++20 compiler, CMake 3.16 or above, and, an internet connection for the first time only, to download GoogleTest~1.17.0~\cite{gtest}. We built and tested it with Apple clang~21 on macOS. The build script will create a Release build (\texttt{-O3}) in the build/ directory and compile the library, solver and tests. The methods accepted by \texttt{-m} are given in Table~\ref{tab-methods}.
 
 \noindent
 \begin{minipage}[t]{0.585\linewidth}
@@ -420,18 +431,19 @@ Held-Karp helper & \texttt{Subset} (\texttt{Subset}, \texttt{SubsetIterator}) \\
 
 \subsection{Architecture}\label{sec-overview}
 
-A run follows the same four steps whatever the method (Figure~\ref{fig-flow}): \texttt{TspParser} reads the file and builds a \texttt{TspInstance}, \texttt{main} picks the solver named by \texttt{-m}, the solver returns a tour, and \texttt{TourWriter} checks the tour and writes the file. Section~\ref{sec-dataflow} shows what happens inside the solving step.
+The four steps of a run are the same regardless of the method used (Figure~\ref{fig-flow}): the \texttt{TspParser} reads the file and creates the \texttt{TspInstance}; the \texttt{main} program selects the solver whose name is passed in the argument \texttt{-m}; the solver returns a tour; and the \texttt{TourWriter} checks the tour and writes the file. The solving step can be seen in the diagram in Section~\ref{sec-dataflow}.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\linewidth,trim=0 225 0 195,clip]{figures/architecture.png}
+\includegraphics[width=\linewidth]{
+figures/architecturehd.jpeg}
 \caption{Data flow of a run, from the instance file to the tour file.}
 \label{fig-flow}
 \end{figure}
 
 \subsection{Classes}\label{sec-why-classes}
 
-Our first version (commit \commit{30e5ed7}) kept every instance as one distance matrix inside \texttt{TspInstance}. It was quick to write, but it lost the coordinates, offered no natural place for the distance formulas and tied every future algorithm to one kind of storage. We replaced it (commit \commit{e8f5266}) with a small graph hierarchy modelled on the graph lab of the course~\cite{tp4}, as summarised in Table~\ref{tab-lab}. Figure~\ref{fig-uml} shows the 19 classes of the final version: the parser, the instance and its graphs on the left, and the solvers, the parts of the heuristic and the subset classes used by Held-Karp on the right.
+In the previous version (commit \commit{30e5ed7}) we stored all instances in a single distance matrix in \texttt{TspInstance}. It was easy to write but it had no coordinates, no natural way to write the distance formulas and linked every future algorithm to a specific type of memory. We replaced it (commit \commit{e8f5266}) with a small graph hierarchy similar to the graph lab used in the course~\cite{tp4} as summarised in Table~\ref{tab-lab}. The final version contains 19 classes, the parser and instance and its graphs are on the left and the solvers, parts of the heuristic, and subset classes used by Held-Karp are on the right as shown in Figure~\ref{fig-uml}.
 
 \begin{table}[H]
 \centering\footnotesize
@@ -459,7 +471,7 @@ Graph lab class & Our class & What changed for the TSP \\
 
 \subsection{Interfaces}\label{sec-interfaces}
 
-Four abstract types connect the parts of the program (Table~\ref{tab-interfaces}). Each part depends only on an abstract type, never on a concrete class, so a new input format or a new method leaves the rest of the code unchanged.
+There are four abstract types that relate to parts of the program (Table~\ref{tab-interfaces}). Each part relies solely on an abstract type, rather than a concrete class, so if a new input format is added, or a new method, the code remains unaffected.
 
 \begin{table}[H]
 \centering\footnotesize
@@ -477,7 +489,7 @@ Abstract type & Functions & Implemented by & What it gives us \\
 \label{tab-interfaces}
 \end{table}
 
-\texttt{Graph} is an abstract class rather than a pure interface because \texttt{tourLength} needs only \texttt{size()} and \texttt{weight()}, so it is written once for both graphs. The other three are pure interfaces with a single function: there is nothing to share between, say, Held-Karp and the trivial method. \texttt{ConstructAndImproveSolver} relies on composition. It owns a constructor and an optional improver through \texttt{std::unique\_ptr}, and \texttt{main} assembles the four heuristic methods from these parts (Figure~\ref{fig-compose}). We kept the hierarchy shallow on purpose: no class implements more than one of these types.
+The reason that \texttt{Graph} is an abstract class, and not a pure interface is that the function \texttt{tourLength} requires only the functions \texttt{size()} and \texttt{weight()}, so both graphs need only one copy of these functions. The other three are pure interfaces, because there is nothing to share between, e.g., Held-Karp and the trivial method. \texttt{ConstructAndImproveSolver} is based on composition. It possesses a \texttt{std::unique\_ptr} of a constructor and an optional improver, and \texttt{main} builds up the four heuristics from these components (Figure~\ref{fig-compose}). The hierarchy was deliberately shallow: No class implements more than one of these types.
 
 \begin{figure}[H]
 \noindent
@@ -547,7 +559,7 @@ none & only the small inputs of the tests & Plain Euclidean distance, not rounde
 \setlength{\parindent}{1.2em}\noindent
 \texttt{TourWriter} first checks that the tour is a permutation of all the cities and only then opens the file, so an invalid tour can never overwrite an existing result. It writes the identifiers of the file rather than the indices, and names the tour after the instance, replacing a trailing \texttt{.tsp} by \texttt{.tour}. The listing on the right shows the start and the end of the trivial tour of \texttt{gr17}.
 
-Errors are handled in one place. Every class reports an error by throwing an exception, and only \texttt{main} catches them: it prints \texttt{Error:} followed by the message and returns 1 (Table~\ref{tab-errors}). The library itself never prints anything, so the tests can check each error directly. \texttt{main} also accepts \texttt{-m} anywhere among the arguments and checks the method name before reading the instance.
+Errors are all dealt with in one place. All the classes throw exceptions for their error (Table~\ref{tab-errors}), with only the exception handler in \texttt{main} catching them, which prints out \texttt{Error:} and the message, and then returns 1. The tests will check each error directly, and the \texttt{-m} option to \texttt{main} can be given anywhere in the arguments and the name of the method will be checked before the instance is read.
 \end{minipage}\hfill
 \begin{minipage}[t]{0.26\linewidth}
 \vspace{0pt}
@@ -575,11 +587,11 @@ This section explains how each method works, with the code that carries its idea
 
 \subsection{Held-Karp}\label{sec-hk}
 
-Held-Karp~\cite{heldkarp} is exact. City 0 is the fixed start, and $c(S,k)$ is the length of the shortest path that leaves city 0, visits every city of the set $S$ exactly once and ends at city $k \in S$. Such a path is a shortest path to some city $i$ through $S \setminus \{k\}$, followed by the edge $(i,k)$, which gives the recurrence of the subject:
+Held-Karp~\cite{heldkarp} is exact. Let $0$ be the set of fixed start and $c(S, k)$ be the length of the shortest path that starts at 0, visits every city of S exactly once and ends at city $k$ of $S$. This path is a shortest path to some city $i$ to $S \setminus \{k\}$, then the edge $(i,k)$:
 \[
 c(\{k\},k) = d(0,k), \qquad c(S,k) = \min_{i \in S \setminus \{k\}} \big( c(S \setminus \{k\}, i) + d(i,k) \big),
 \]
-and the optimal length is $\min_k c(V \setminus \{0\}, k) + d(k,0)$. The table is one flat vector: its row is the bitmask of $S$ and its column the end city, so $c(S,k)$ is stored in \texttt{cost[S * m + k]}, with $m = n-1$. It is filled by increasing size of $S$; within one size, \texttt{SubsetIterator} lists the subsets with Gosper's hack (Table~\ref{tab-subset}), so every value a cell needs is already computed. To recover the tour (Figure~\ref{fig-hk}), the solver walks back from the best last city: at each step it looks for the city $i$ whose stored value plus $d(i,k)$ gives exactly the value of the current cell. The comparison with \texttt{==} is safe because it adds the same two numbers as when the table was filled. Two practical details: the distances are first copied into a plain matrix, since they are read about $n^2 2^n$ times, and the solver refuses more than 24 cities (Table~\ref{tab-extra}).
+and the optimal length is $\min_k c(V \setminus \{0\}, k) + d(k,0)$. The table is one single vector: the row is the bitmask of $S$ and the column the end city location, and therefore $c(S,k)$ is stored in \texttt{cost[S * m + k]} where $m = n-1$. It is filled by growing $S$; for each size of $S$ the subsets are listed by the Gosper's hack (Table~\ref{tab-subset}), so every value stored in a cell is already computed. For recovery of the tour (Figure~\ref{fig-hk}) the solver traces back from the best last city: at each step, it searches for the city $i$ such that the value stored in the cell $i$ plus $d(i,k)$ equals the value of the current cell. The left-hand side of the comparison with \texttt{==} is safe because it computes the same two numbers as were put into the table. Two practicalities: the distances are copied into a plain matrix, which is read $n^2 2^n$ times, and the solver takes no more than 24 cities (Table~\ref{tab-extra}).
 
 \begin{figure}[H]
 \noindent
@@ -704,7 +716,7 @@ for (std::size_t added = 0; added < n; added++) {
 }
 \end{lstlisting}
 \end{minipage}\hfill
-\begin{minipage}[t]{0.46\linewidth}
+\begin{minipage}[t]{0.45\linewidth}
 \vspace{0pt}
 {\footnotesize\raggedright\textbf{Depth-first order} (\texttt{MstConstructor.cpp})\par}
 \begin{lstlisting}[style=side]
@@ -734,7 +746,7 @@ return tour;
 \label{fig-mst}
 \end{figure}
 
-A walk around the tree uses every edge twice, so its length is $2\,\mathrm{MST}$. The depth-first order skips the cities already visited, and with the triangle inequality each shortcut is no longer than the part of the walk it replaces. Hence the tour is at most $2\,\mathrm{MST} \le 2\,\mathrm{OPT}$, because removing one edge from an optimal tour leaves a spanning tree. The bound needs the triangle inequality, which none of the five matrix files satisfies: in \texttt{gr17}, for example, going directly from city 1 to city 6 costs 150, but going through city 7 costs only 143. Our tests therefore check the bound on the coordinate files only.
+The length of a walk around the tree is $2\,\mathrm{MST}$, because each edge is traversed twice. The depth-first order avoids the already-visited cities and the triangle inequality ensures that each shortcut is not longer than the corresponding part of the walk. The tour is therefore at most $2\,\mathrm{MST} \le 2\,\mathrm{OPT}$, since if there's one edge missing from an optimal tour there's a spanning tree. For instance, the bound requires the triangle inequality which is not met by any of the five matrix files; in \texttt{gr17} for example, Going from 1 to 6 through city 7 costs 143, less than the direct 150. Our tests therefore check the bound on the coordinate files only.
 
 \subsection{Nearest neighbour and 2-opt}\label{sec-nn2opt}
 
@@ -807,13 +819,19 @@ for (std::size_t pass = 0; improved && pass < maxPasses;
 \label{fig-nn2opt}
 \end{figure}
 
-\section{Data flow diagrams}\label{sec-dataflow}
-
+\section{Data flow diagram}\label{sec-dataflow}
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{figures/dataflowdiagram.png}
+\caption{Data flow and solver pipeline for the Travelling Salesman 
+Problem (TSP) solver}
+\label{fig-dfd}
+\end{figure}
 % Section kept empty on purpose: to be written by Riyyan
 
 \section{Traced examples}\label{sec-traced}
 
-To see the three methods at work, we trace them on our five-city example \texttt{handexample.tsp} (Table~\ref{tab-trace-data}). We call the cities A to E: they have the identifiers 1 to 5 in the file and the indices 0 to 4 in the program, so A is the start. The instance is small enough to show every step, yet each method reaches the optimum, 23, in its own way (Figure~\ref{fig-traced}). We replayed every value below with the loops and tie rules of our code, and the final tours are exactly the ones written by \texttt{TSPsolver}.
+To illustrate the three methods, we follow them on our 5-city example \texttt{handexample.tsp} (Table~\ref{tab-trace-data}). We call the cities A to E: they have the identifiers 1 to 5 in the file and the indices 0 to 4 in the program, so A is the start. The size of the instance is small enough to display all of the steps, but each method arrives at the optimal 23 in different ways (see Figure~\ref{fig-traced}). We ran down each of the values below with the loops and tie rules in our code; the final tours are those that were written by \texttt{TSPsolver}.
 
 \begin{figure}[H]
 \centering
@@ -909,9 +927,9 @@ $S$ & $k$ & Before $k$ & Check \\
 
 \subsection{Nearest neighbour and minimum spanning tree tours, then 2-opt}
 
-From A, nearest neighbour always moves to the closest unvisited city: E, then B, D and C, and finally back to A (Table~\ref{tab-trace-nn}). The last edge, C--A, costs 8 because nothing is left near C, and the tour A E B D C has length 26. For the MST tour, Prim grows the tree from A (Table~\ref{tab-trace-prim}): E joins first, then B, then C, whose cheapest link has dropped from 8 (through A) to 6 (through E), and finally D. The tree weighs 16. The depth-first walk visits A, then its children B and E in increasing order. B has no child, so the walk continues with E, C and D, which gives the tour A B E C D of length 28, within the bound $2 \times 16 = 32$ of Section~\ref{sec-mst}.
+From A, nearest neighbour always moves to the closest city that has yet to be visited: E, then B, D and C, then A (Table~\ref{tab-trace-nn}). The last edge is C--A and it has cost 8 because there is nothing left near C; the tour A E B D C has length 26. For the MST tour, Prim grows the tree from A (Table~\ref{tab-trace-prim}): E is added first, then B, then C with its lowest cost edge from A (E was 8) to its lowest cost edge from E (6), and lastly D. The tree weighs 16. The depth-first walk visits A, then its children B and E in increasing order. B has no child, so the walk continues with E, C and D. This gives the tour A B E C D of length 28, which is within the bound $2 \times 16 = 32$ of Section~\ref{sec-mst}.
 
-Both tours contain a crossing, made of the edges drawn dashed in Figure~\ref{fig-traced}. In the first pass, 2-opt scans the pairs of edges $(i, j)$ and finds that only the pair $(1, 4)$ shortens either tour (Table~\ref{tab-trace-2opt}). It removes E--B and C--A from the nearest neighbour tour (gain 3), and B--E and D--A from the MST tour (gain 5). Reversing the positions 2 to 4 gives A E C D B and A B D C E, both of length 23: the cycle found by Held-Karp, the second one traversed in the opposite direction. A second pass finds no improving move, so 2-opt stops. On such a small instance one move is enough; on larger ones it stops at a local optimum, as Section~\ref{sec-perf} shows.
+All these tours have a crossing, which is represented here with dashed edges in Figure~\ref{fig-traced}. The first time, 2-opt considers all pairs of edges $(i, j)$ and discovers that there is only one pair that can shorten either tour: $(1, 4)$ (Table~\ref{tab-trace-2opt}). It eliminates E--B and C--A from the tour of the nearest neighbours (gain 3) and B--E and D--A from the tour of the MST (gain 5). Reversing the positions 2 to 4 gives A E C D B and A B D C E, both of length 23. They are the same cycle, the one found by Held-Karp, traversed in opposite directions. During a second pass, no improving move is found and 2-opt halts. On this smaller instance one move suffices; on larger instances it comes to a local optimum as can be seen in Section~\ref{sec-perf}.
 
 \noindent
 \begin{minipage}[t]{0.40\linewidth}
@@ -969,7 +987,7 @@ $(i,j)$ & Removed & Added & Change & $(i,j)$ & Removed & Added & Change \\
 
 \section{Complexity}\label{sec-complexity}
 
-Table~\ref{tab-complexity} gives the time and memory cost of each part, for an instance of $n$ cities. For Held-Karp, the three nested loops run over the $2^{n-1}$ subsets, the $n-1$ possible end cities and the $n-2$ possible previous cities, which gives the $O(n^2 2^n)$ time of the subject; the table holds $(n-1)\,2^{n-1}$ values, hence $O(n 2^n)$ memory, and this memory is what limits the solver to 24 cities. The heuristics are polynomial: building a tour costs $O(n^2)$, like reading a matrix file, and so does each pass of 2-opt. How many passes 2-opt needs depends on the instance and is not bounded in advance; Section~\ref{sec-perf} shows the times we measured.
+The time and memory cost of each part for an instance of $n$ cities is given in Table~\ref{tab-complexity}. For Held-Karp, the three nested loops run over the $2^{n-1}$ subsets, the $n-1$ possible end cities and the $n-2$ possible previous cities, which gives the $O(n^2 2^n)$ time of the subject; the table holds $(n-1)\,2^{n-1}$ values, hence $O(n 2^n)$ memory, and this memory is what limits the solver to 24 cities. The heuristics are polynomial: constructing the tour requires $O(n^2)$ time, which is the same as reading in the matrix file, and each pass of 2-opt requires $O(n^2)$. The number of passes required for 2-opt is not known a priori for a given instance; the times we measured are given in Section~\ref{sec-perf}.
 
 \begin{table}[H]
 \centering\footnotesize
@@ -996,7 +1014,7 @@ Nearest neighbour tour & $O(n^2)$ & $O(n)$ & \\
 
 \subsection{Unit and executable tests}
 
-The suite has 157 GoogleTest tests in 12 files, one per component, and runs in about 0.6\,s with \texttt{./build/tests}. Four of them are parameterised and run once on each of the 15 provided instances (60 runs), so every algorithm is also tested on real data. Shared helpers, such as the list of instances, a permutation check and a small four-city graph, live in \texttt{TestHelpers.hpp}. Table~\ref{tab-tests} summarises the files. Several tests reproduce defects we had to fix (an invalid tour emptying the output file, an out of range matrix index, data after \texttt{EOF}, identifiers starting at 0), so they also protect against regressions.
+The suite consists of 157 GoogleTest tests in 12 test files, one for each component, and takes approximately 0.6\,s to execute using \texttt{./build/tests}. Four of them are parameterised and executed one per the 15 instances of data provided (60 runs), these are also tested on real data for each algorithm. There are helpers, like the list of instances, a permutation check and a small 4-city graph, that are shared in \texttt{TestHelpers.hpp}. The following table~\ref{tab-tests} summarizes the files. There are a number of tests that exercise defects which we had to patch (an invalid tour, an out of range matrix index, data after \texttt{EOF}, identifiers starting at 0), and they protect against regressions too.
 
 \begin{table}[H]
 \centering\footnotesize
@@ -1047,7 +1065,7 @@ Generated (\texttt{EUC\_2D}) & 11 & One instance for each $n = 8, 10, \dots, 22$
 
 \subsection{Method}
 
-We measured the execution time, the solution quality and the scalability of the four methods with \texttt{benchmark.py}. Every number in this section comes from the two files it writes, \texttt{output/results\_provided.csv} and \texttt{output/results\_scaling.csv}, and \texttt{plot\_results.py} draws the figures from them.
+We performed experiments to measure the execution time, the solution quality and the scalability of the four methods using the file \texttt{benchmark.py}. Each of the numbers in this section is from the corresponding two files, \texttt{output/results\_provided.csv} and \texttt{output/results\_scaling.csv} and the figures are created using \texttt{plot\_results.py}.
 \begin{itemize}
   \item \textbf{Time} is the wall-clock time of a whole run (start, reading, solving, writing), averaged over 5 runs after one warm-up run, on an Apple M5 laptop with 24\,GB of memory (macOS, Apple clang~21, \texttt{-O3}). About 1.5\,ms of every run is a fixed cost, which is what the trivial method shows, so differences below a millisecond are not meaningful.
   \item \textbf{Quality} is the gap $(\mathrm{length} - \mathrm{optimum}) / \mathrm{optimum}$. The script recomputes each length from the tour file with the TSPLIB formulas. The optima are the values published with TSPLIB~\cite{tsplib}; for our 5-city example, the optimum (23) comes from trying every tour.
@@ -1090,7 +1108,7 @@ Instance & $n$ & Optimum & gap (\%) & time (ms) & gap (\%) & time (ms) & gap (\%
 \label{tab-perf-provided}
 \end{table}
 
-The two heuristics stay close to the optimum: on average 5.6\,\% (\texttt{mst-2opt}) and 5.7\,\% (\texttt{nn-2opt}) above it, and never more than 11.6\,\% (Figure~\ref{fig-gap}). Up to 17 cities they are at most 1.4\,\% above, and both are optimal on \texttt{gr17}; from 21 cities on, they lie between 2.8\,\% and 11.6\,\% above. Neither method dominates: \texttt{mst-2opt} gives the shorter tour on 9 instances, \texttt{nn-2opt} on 5, and both are optimal on \texttt{gr17}. Since 2-opt stops at a local optimum, the starting tour decides which one it reaches. Both heuristics take between 1.6 and 2.3\,ms on the provided instances of up to 130 cities, which is mostly the fixed cost, about 4\,ms on \texttt{pr299} and 35 to 39\,ms on \texttt{pr1002}.
+The two heuristics remain very close to the optimum (on average 5.6\,\% and 5.7\,\% above the optimum, respectively, for the heuristics \texttt{mst-2opt} and \texttt{nn-2opt}), and never more than 11.6\,\% (Figure~\ref{fig-gap}).  Up to 17 cities they are at most 1.4\,\% above, and both are optimal on \texttt{gr17}; from 21 cities on, they lie between 2.8\,\% and 11.6\,\% above. Both methods do not perform best on all instances: \texttt{mst-2opt} is the shortest tour on 9 instances, \texttt{nn-2opt} on 5, and both methods provide optimal tours on \texttt{gr17}. 2-opt does not guarantee to find the optimal solution, as it will only end up at a local optimum that is determined by the starting tour. Both heuristics take between 1.6 and 2.3\,ms on the provided instances of up to 130 cities, which is mostly the fixed cost, about 4\, ms on \texttt{pr299} and 35 to 39\,ms on \textit{pr1002}.
 
 \begin{figure}[H]
 \centering
@@ -1101,7 +1119,7 @@ The two heuristics stay close to the optimum: on average 5.6\,\% (\texttt{mst-2o
 
 \subsection{Scalability}
 
-Table~\ref{tab-perf-scaling} and Figure~\ref{fig-scaling} show how the time grows with the number of cities. Held-Karp is only fast while the fixed cost dominates: it takes 1.5\,ms at 8 cities, 6\,ms at 16, 115\,ms at 20 and 573\,ms at 22. Each step of two cities multiplies its time by about 5 (by 4.7 from 18 to 20 and by 5.0 from 20 to 22), as its $O(n^2 2^n)$ cost predicts (4.9 and 4.8). On \texttt{gr24}, a provided instance of 24 cities, it takes 2.8\,s and its table needs about 1.5\,GB, which is why the solver stops there. The heuristics stay below 2\,ms up to 22 cities, then take 3\,ms at 200 cities, 9\,ms at 500 and 115 to 135\,ms at 2\,000. Multiplying $n$ by 4, from 500 to 2\,000, multiplies their time by 12 to 14, close to the factor 16 of a quadratic cost. The trivial method stays between 1.5 and 2.4\,ms, which is the fixed cost of a run.
+Table~\ref{tab-perf-scaling} and Figure~\ref{fig-scaling} illustrate the increase in time as the number of cities increases. Held-Karp is only fast while the fixed cost dominates: it takes 1.5\,ms at 8 cities, 6\,ms at 16, 115\,ms at 20 and 573\,ms at 22. Each step of two cities multiplies its time by about 5 (by 4.7 from 18 to 20 and by 5.0 from 20 to 22), as its $O(n^2 2^n)$ cost predicts (4.9 and 4.8). The solver stops solves \texttt{gr24} in 2.8\,s, with a table size of approximately 1.5\,GB because 24 cities is the limit. The heuristics stay below 2\,ms up to 22 cities, then take 3\,ms at 200 cities, 9\,ms at 500 and 115 to 135\,ms at 2\,000. Multiplying by 4, from 500 to 2\,000, multiplies time by 12 to 14, near the factor of 16 of a quadratic cost. The trivial approach remains within the range of 1.5-2.4\,ms, which is the constant cost of running.
 
 \begin{figure}[H]
 \noindent
@@ -1149,7 +1167,7 @@ Figure~\ref{fig-tours} draws the four tours of \texttt{burma14}. The trivial tou
 
 \subsection{Summary}
 
-The measurements show the trade-off we expected. Held-Karp is exact but limited to 24 cities by its memory, and takes 2.8\,s at that size. The two heuristics handle every instance we tried, up to 2\,000 cities, in at most 135\,ms, and stay on average 5.6\,\% and 5.7\,\% above the optimum on the provided instances. The trivial method only measures the fixed cost of a run.
+As you see, there is a trade-off as we had anticipated. Held-Karp is exact, but is restricted to 24 cities because of its memory, and requires 2.8\,s at that size. The two heuristics handle every instance we tried, up to 2\,000 cities, in at most 135\,ms, and stay on average 5.6\,\% and 5.7\,\% above the optimum on the provided instances. The easy method only measures the standstill cost of a run.
 
 \section{Limitations and future work}\label{sec-limits}
 
@@ -1176,44 +1194,91 @@ Only the formats of the archive are read & Other TSPLIB formats (e.g. \texttt{FU
 
 \section{Reflections}
 
-Three lessons stand out. First, the redesign we did before the mid-term paid off: every method of the final version was added as new classes, without touching the parser or the graph classes, and splitting a heuristic into a construction and an improvement turned one idea into four methods. This time every algorithm also came with its tests in the same commit, a lesson from the mid-term.
+There are three lessons to be learned. The first thing to point out is that the redesign we had done before the mid-term was successful in the sense that we added all methods to the final version as new classes (no changes to the parser nor to the graph classes), and split up an idea into a construction and an improvement resulted in the conversion of one idea to four methods. During this time, all the algorithms were accompanied by their respective tests as well, following the mid-term pattern.
 
-Second, the hardest decisions were not about code. Choosing the third method took a full day of reading before we wrote a line, and the memory of Held-Karp, more than its time, turned out to be its real limit. The measurements made the trade-off concrete: an exact answer for 24 cities costs 2.8 seconds, while 2-opt gets within 10\,\% of the optimum on 1\,002 cities in 40 milliseconds.
+Second, the most difficult decisions were not with respect to the code. We read for a full day before writing a line for the third method, and his memory, if it was more, was its true limit. The tradeoff was put in numbers: 2.8 seconds for an exact answer in 24 cities and 40 milliseconds for getting within 10\,\% of optimal on 1\,002 cities for 2-opt.
 
-Third, we would integrate more often. Held-Karp and the heuristics were developed on separate branches and only came together on 9 and 14 November, which left little time to test them side by side. Merging every week would have shown integration problems earlier.
+Thirdly, we would integrate more frequently. Those held-Karp and heuristics were developed on separate branches, and only merged on 9 and 14 November, so there was little time to test them side by side. The original meant the opposite: merging every week would have shown integration problems earlier.
 
-\section{Use of AI tools}
+\section{Use of AI tools}\label{sec-last}
 % Requires in the preamble: \usepackage{hyperref}
 
 \subsection*{Tools used}
 \begin{itemize}
-  \item Claude Opus 5.5 and Claude Sonnet 5.5 (Anthropic), between 25 September and 13 October 2026.
+  \item Claude Opus 5.5 and Claude Sonnet 5.5 (Anthropic), between 25 September and 15 November 2026.
 \end{itemize}
 
 \subsection*{AI-generated code}
 Each part is marked in the code with a comment naming the tool and the date.
 \begin{itemize}
-  \item \texttt{src/TspParser.cpp}, function \texttt{trim()} (Claude Opus 5.5, 25 September): the helper that removes spaces, tabs and line breaks at both ends of a header line.
-  \item \texttt{src/MatrixGraph.cpp}, constructor checks (Claude Opus 5.5, 7 October): the two checks that reject an empty or a non-square distance matrix.
-  \item \texttt{tests/ParserTests.cpp} (Claude Sonnet 5.5, 13 October): formatting of the small instance texts used as test input, and some of the parser tests.
-  \item \texttt{tests/ExecutableTests.cpp} (Claude Sonnet 5.5, 13 October): the helper \texttt{slurp()}, which reads a whole output file into a string, and part of the \texttt{TEST\_F} tests that run the executable.
+  \item \texttt{src/TspParser.cpp}, \texttt{trim()} (Opus 5.5, 25 Sep): removes spaces, tabs and line breaks at both ends of a header line.
+
+    \item \texttt{src/MatrixGraph.cpp}, constructor checks (Opus 5.5, 7 Oct): rejects an empty or non-square distance matrix.
+
+    \item \texttt{tests/ParserTests.cpp} (Sonnet 5.5, 13 Oct): formatting of the small instance texts used as test input, and some of the parser tests.
+
+    \item \texttt{tests/ExecutableTests.cpp} (Sonnet 5.5, 13 Oct and 7 Nov): the \texttt{slurp()} helper, which reads a whole output file into a string, and part of the \texttt{TEST\_F} tests that run the executable.
+
+    \item \texttt{tests/NearestNeighbourConstructorTests.cpp} (Opus 5.5, 7 Nov): the test \\\texttt{everyStepGoesToTheNearestCity}, which checks that each step goes to the closest unvisited city.
+
+    \item \texttt{src/CoordinatesGraph.cpp} (Sonnet 5.5, 9 Nov): help with some of the distance formulas and their logic.
+
+    \item \texttt{src/MinimumSpanningTree.cpp}: we used Claude, together with online documentation, to understand the logic of Prim's algorithm before implementing it.
+
+    \item \texttt{benchmark.py} (Opus 5.5, 11 Nov): written with AI help. It extracts the TSPLIB optimum values and runs the solver on every instance.
+
+    \item \texttt{plot\_results.py} (Opus 5.5, 15 Nov): written by Claude, following our instructions about which graphs we wanted and what each one should show.
+\end{itemize}
+
+\subsection*{AI-assisted code revisions}
+
+AI was also used for minor code improvements that did not change the implemented algorithms.
+
+\begin{itemize}
+    \item \texttt{src/HeldKarpSolver.cpp} (Opus 5.5, 14 Nov): the comment explaining the recurrence, include order, formatting.
+
+    \item \texttt{src/Subset.cpp} (Opus 5.5, 14 Nov): \texttt{std::countr\_zero} to find the lowest bit in one instruction, formatting.
+
+    \item \textbf{Test cleanup} (Opus 5.5, 13--15 Nov):
+    \begin{itemize}
+        \item \texttt{MstConstructorTests}, \texttt{TwoOptTests} and \texttt{ConstructAndImproveSolverTests} now use the shared helpers from \texttt{TestHelpers.hpp};
+        \item duplicate tests removed;
+        \item the two iteration tests in \texttt{SubsetTests} merged;
+        \item trailing spaces and include order fixed in \texttt{GraphTests} and \texttt{HeldKarpTests}.
+    \end{itemize}
 \end{itemize}
 
 \subsection*{Code written without AI}
+
 \begin{itemize}
-  \item All other source files, headers and tests, the CMake file and the build script.
+    \item All the other source files, headers and tests, and the build script.
+    \item \texttt{CMakeLists.txt}: adapted from the professor's template.
 \end{itemize}
 
 \subsection*{How we checked the AI-generated parts}
+
 \begin{itemize}
-  \item We read and understood each part before keeping it, and adapted it to our code.
-  \item Every part is covered by the test suite (92 tests passing), and the output tours were validated with the course checker.
+    \item We read and understood each part before keeping it, and adapted it to our code.
+
+    \item The test suite covers every part: \textbf{157 tests}, all passing.
+
+    \item \texttt{benchmark.py} checks every tour file the solver writes: format, permutation of the city ids, \texttt{-1} and \texttt{EOF}. It also recomputes each tour length independently of the C++ code. Held-Karp returns the published optimum on every instance of up to 24 cities.
+
+    \item The course checker accepted our tours at the mid-term.
+
+    \item Before submitting, we built the project from a fresh clone of the repository with \texttt{build-TSPsolver.sh} and ran all the tests and every method.
 \end{itemize}
 
-\subsection*{Other uses of AI (not code)}
+\subsection*{Other uses of AI}
+
 \begin{itemize}
-  \item Explanations of C++ concepts while learning (e.g.\ \texttt{std::move}, \texttt{unique\_ptr}, virtual functions, parsing with streams and other complex concepts).
-  \item Review of the code against the specification, to find missing requirements and bugs.
+    \item \textbf{C++ concepts while learning:} \texttt{std::move}, \texttt{unique\_ptr}, virtual functions, parsing with streams, and so on.
+
+    \item \textbf{Step-by-step explanations of algorithms we used}, to be able to explain them: Prim's MST, the depth-first walk, 2-opt, nearest neighbour, the Held-Karp table, Gosper's hack.
+
+    \item \textbf{Review of the code against the subject}, to find missing requirements and bugs.
+
+    \item \textbf{Report:} help with the LaTeX formatting (tables, figure placement) and checking that each section's content matches its heading.
 \end{itemize}
 
 \subsection*{DALIA self-assessment}
